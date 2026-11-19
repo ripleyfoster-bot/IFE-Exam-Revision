@@ -100,6 +100,12 @@
       return h('button', { class: 'modcard', type: 'button', onclick: function () { unitFilter = -1; modScreen(m); } },
         h('strong', null, m.title), h('span', null, m.subtitle), bar(st.mastery), h('small', null, pct(st.mastery) + ' mastered'));
     });
+    if (RV) {
+      var rs = rvState(), dn = rvDayNow();
+      list.push(h('button', { class: 'modcard rvcard', type: 'button', onclick: rvHome },
+        h('strong', null, RV.title), h('span', null, RV.subtitle + ': every module, in the IFE exam formats'),
+        bar(rs.start ? Math.min(7, dn) / 7 : 0), h('small', null, rs.start ? (dn > 7 ? 'All 7 days open' : 'Day ' + dn + ' of 7') : 'Not started')));
+    }
     show(topbar('IFE Level 3 Revision', null, h('button', { class: 'link', type: 'button', onclick: about }, 'About')),
       h('p', { class: 'lead' }, 'Pick a module. The app tracks what you know and steers practice to your weak spots.'), list);
   }
@@ -398,6 +404,241 @@
         btn('Back to module', 'primary', function () { modScreen(m); }));
     }
     next();
+  }
+
+  /* ---------- revision: 7-day exam countdown ---------- */
+  // Exam conditions: one paper a day in the IFE online formats, no feedback until the end.
+  // Questions are built from the module items (so answers here also move module mastery)
+  // plus the Revision-only items in content/revision.js.
+  var RV = window.IFE_REVISION || null, RVC = [];
+  var FMT = {};
+  var NUMRE = /^\d+(\.\d+)?$/;
+  var RANKRE = /rank|importance|priority|most|highest|effective|likelihood|challenge|risk/i;
+  function ext(a, b) { var o = {}, k; for (k in a) o[k] = a[k]; for (k in b) o[k] = b[k]; return o; }
+
+  function rvBuild() {
+    RV.formats.forEach(function (f) { FMT[f[0]] = { name: f[1], how: f[2] }; });
+    MODS.forEach(function (m) {
+      m._items.forEach(function (x) {
+        var base = { m: m, u: x.u, id: x.id };
+        if (x.type === 'q') {
+          if (x.order) RVC.push(ext(base, { fmt: RANKRE.test(x.q) ? 'rank' : 'seq', q: x.q, order: x.order, g: x.g }));
+          else RVC.push(ext(base, { fmt: x.a.length > 1 ? 'mr' : 'mc', q: x.q, o: x.o, a: x.a, g: x.g }));
+        } else if (x.type === 'fill') {
+          if (NUMRE.test(x.a)) RVC.push(ext(base, { fmt: 'num', text: x.text, a: +x.a }));
+          else {
+            RVC.push(ext(base, { fmt: 'type', text: x.text, a: x.a }));
+            RVC.push(ext(base, { fmt: 'select', text: x.text, a: x.a, d: x.d }));
+          }
+        }
+      });
+      m.matches.forEach(function (s, i) { RVC.push({ fmt: 'match', kind: 'pairs', m: m, u: s.u, id: m.id + '.p' + i, set: i, q: s.title }); });
+      m.diagrams.forEach(function (d, i) { RVC.push({ fmt: 'diagram', m: m, u: d.u, id: m.id + '.d' + i, dg: i, q: d.title }); });
+    });
+    RV.numeric.forEach(function (n, i) { RVC.push({ fmt: 'num', day: n[0], id: 'rv.n' + i, text: n[1], a: n[2] }); });
+    RV.orders.forEach(function (o, i) { RVC.push({ fmt: o.f === 'r' ? 'rank' : 'seq', day: o.d, id: 'rv.o' + i, q: o.q, order: o.order }); });
+    RV.sorts.forEach(function (s, i) { RVC.push({ fmt: 'match', kind: 'sort', day: s.d, id: 'rv.s' + i, q: s.q, cats: s.cats, rows: s.rows }); });
+  }
+  if (RV) rvBuild();
+
+  function rvState() { if (!S.rev) S.rev = { start: null, days: {}, fmt: {} }; return S.rev; }
+  function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function daysSince(key) {
+    var p = key.split('-'), a = new Date(+p[0], +p[1] - 1, +p[2]), n = new Date(), b = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+    return Math.round((b - a) / 86400000);
+  }
+  function rvDayNow() { var r = rvState(); return r.start ? Math.max(1, daysSince(r.start) + 1) : 0; }
+  function dayOpen(n) { var r = rvState(); return r.start ? daysSince(r.start) >= n - 1 : n === 1; }
+  function inDay(day, c) {
+    if (c.day) return c.day === day.n;
+    return !!c.m && day.units.some(function (p) { return p[0] === c.m.id && p[1] === c.u; });
+  }
+  function subIds(c) {
+    if (c.fmt === 'match' && c.kind === 'pairs') return c.m.matches[c.set].pairs.map(function (p, j) { return c.id + '.' + j; });
+    if (c.fmt === 'diagram') return c.m.diagrams[c.dg].marks.map(function (k, j) { return c.id + '.' + j; });
+    return [c.id];
+  }
+  function cw(c) { var ids = subIds(c), t = 0; ids.forEach(function (id) { t += weight(id); }); return t / ids.length; }
+
+  // Weighted draw towards weak items, never two questions on the same topic tag or the same source item.
+  function drawN(list, n, used) {
+    var pool = list.map(function (c) { return { c: c, w: cw(c) }; }), out = [];
+    function free(c) { return !used.ids[c.id] && (c.g || []).every(function (t) { return !used.tags[t]; }); }
+    pool = pool.filter(function (p) { return free(p.c); });
+    while (out.length < n && pool.length) {
+      var tot = 0, k, r; pool.forEach(function (p) { tot += p.w; });
+      r = Math.random() * tot;
+      for (k = 0; k < pool.length - 1; k++) { r -= pool[k].w; if (r <= 0) break; }
+      var c = pool.splice(k, 1)[0].c;
+      if (!free(c)) continue;
+      out.push(c); used.ids[c.id] = true; (c.g || []).forEach(function (t) { used.tags[t] = true; });
+    }
+    return out;
+  }
+  function rvPaper(day, mock) {
+    var mix = mock ? RV.mockMix : RV.paperMix, out = [], used = { ids: {}, tags: {} };
+    RV.formats.forEach(function (f) {
+      var k = f[0], want = mix[k] || 0;
+      var mine = RVC.filter(function (c) { return c.fmt === k && (mock || inDay(day, c)); });
+      var got = drawN(mine, want, used);
+      // every format appears every day: if today's topics have too few of a format, borrow from other days
+      if (got.length < want) {
+        got = got.concat(drawN(RVC.filter(function (c) { return c.fmt === k && mine.indexOf(c) < 0; }), want - got.length, used)
+          .map(function (c) { return ext(c, { borrowed: true }); }));
+      }
+      out = out.concat(got);
+    });
+    return shuffle(out);
+  }
+
+  /* revision home */
+  function rvHome() {
+    var r = rvState(), now = rvDayNow();
+    var rows = RV.days.map(function (d) {
+      var open = dayOpen(d.n), rec = r.days[d.n], st;
+      if (!open) { var wait = d.n - now; st = 'Unlocks ' + (wait <= 1 ? 'tomorrow' : 'in ' + wait + ' days'); }
+      else st = rec ? 'Best ' + pct(rec.best) + ' · ' + rec.tries + ' attempt' + (rec.tries > 1 ? 's' : '') : (d.n === now || (!r.start && d.n === 1) ? 'Today' : 'Ready');
+      var topics = d.units.map(function (p) { var m = MODS.filter(function (x) { return x.id === p[0]; })[0]; return m ? 'M' + ({ One: 1, Two: 2, Three: 3 }[m.title.split(' ')[1]] || '') + ' ' + m.units[p[1]].split(':')[0] : ''; }).join(' · ');
+      return h('button', { class: 'modcard day' + (open ? '' : ' off') + (rec && rec.best >= CFG.passMark ? ' done' : ''), type: 'button', disabled: !open, onclick: function () { rvStart(d, false); } },
+        h('strong', null, 'Day ' + d.n + ': ' + d.title), h('span', null, topics), rec ? bar(rec.best, rec.best >= CFG.passMark ? 'good' : rec.best < 0.5 ? 'weak' : '') : null,
+        h('small', null, st + ' · ' + RV.paperLength + ' questions'));
+    });
+    var d7 = RV.days[6], mockOpen = dayOpen(7), mk = r.days.mock;
+    var mock = h('button', { class: 'modcard day mock' + (mockOpen ? '' : ' off'), type: 'button', disabled: !mockOpen, onclick: function () { rvStart(d7, true); } },
+      h('strong', null, 'Day 7: Full mock exam'), h('span', null, 'Every module, every format'), mk ? bar(mk.best, mk.best >= CFG.passMark ? 'good' : '') : null,
+      h('small', null, (mockOpen ? (mk ? 'Best ' + pct(mk.best) : 'Ready') : 'Unlocks on Day 7') + ' · ' + RV.mockLength + ' questions'));
+    var fs = RV.formats.map(function (f) {
+      var x = r.fmt[f[0]];
+      return h('div', { class: 'urow' }, h('div', { class: 'uname' }, f[1], h('b', null, x ? x.s + ' / ' + x.n : '–')), bar(x ? x.s / x.n : 0, x ? (x.s / x.n >= CFG.passMark ? 'good' : x.s / x.n < 0.5 ? 'weak' : '') : ''));
+    });
+    show(topbar('Revision', home),
+      h('div', { class: 'panel hero' },
+        h('div', { class: 'big' }, r.start ? (now > 7 ? 'Done' : 'Day ' + now) : '7 days'),
+        h('div', null, r.start ? (now > 7 ? 'All seven days are open. Keep sitting papers.' : 'of 7 · started ' + r.start.split('-').reverse().join('/')) : 'One exam-style paper a day, in the IFE online formats.'),
+        h('div', { class: 'ready' }, 'Exam conditions: no feedback until you finish. Modules One to Three stay open for practice at any time.')),
+      h('h2', null, 'Your countdown'), rows, mock,
+      h('h2', null, 'Score by exam format'), fs,
+      h('div', { class: 'panel' }, h('p', null, 'Each day unlocks at midnight after you start Day 1. Days you have reached stay open, so you can sit their papers again.'),
+        r.start ? btn('Restart the countdown', '', function () { if (window.confirm('Restart the 7 days from today? Scores are kept.')) { r.start = today(); save(); rvHome(); } }) : null));
+  }
+
+  function rvStart(day, mock) {
+    var r = rvState();
+    if (!r.start) { r.start = today(); save(); }
+    var paper = rvPaper(day, mock), i = 0, res = [], title = mock ? 'Full mock exam' : 'Day ' + day.n;
+    function leave() { if (window.confirm('Leave this paper? This attempt will not be saved.')) rvHome(); }
+    function next() {
+      if (i >= paper.length) return rvResult(day, mock, res);
+      var c = paper[i], body = h('div', { class: 'task' });
+      show(topbar(title, leave, (i + 1) + ' / ' + paper.length), bar(i / paper.length, 'thin'), body);
+      add(body, [h('div', { class: 'fmt' }, h('b', null, FMT[c.fmt].name), ' · ', FMT[c.fmt].how),
+        h('div', { class: 'utag' }, c.m ? c.m.title + ' · ' + c.m.units[c.u] : 'Day ' + c.day + ': ' + RV.days[c.day - 1].title)]);
+      rvRender(c, body, function (out) { out.c = c; res.push(out); i++; next(); });
+    }
+    next();
+  }
+
+  /* one renderer per format; each calls done({ ok, marks: [[id, ok]], given, right }) */
+  function norm(s) { return String(s).toLowerCase().replace(/[‘’]/g, "'").replace(/\s+/g, ' ').trim().replace(/\.$/, ''); }
+  function rvRender(c, body, done) {
+    var f = c.fmt;
+    if (f === 'mc' || f === 'mr' || f === 'seq' || f === 'rank') {
+      var t = c.order ? { q: c.q, order: c.order } : { q: c.q, o: c.o, a: c.a };
+      return renderQ(c.m || null, t, body, function (ok, given) {
+        done({ ok: ok, marks: [[c.id, ok]], given: given || 'no answer', right: c.order ? c.order.join(' → ') : c.a.map(function (k) { return c.o[k]; }).join('; ') });
+      }, true);
+    }
+    if (f === 'type' || f === 'num') {
+      var parts = c.text.split('___');
+      var inp = h('input', { class: 'tin' + (f === 'num' ? ' n' : ''), type: 'text', inputmode: f === 'num' ? 'decimal' : 'text', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Your answer' });
+      var go = btn('Next', 'primary', function () {
+        var v = inp.value.trim(), ok;
+        if (f === 'num') { var x = v.replace(/,/g, ''); ok = x !== '' && isFinite(+x) && Math.abs(+x - c.a) < 1e-9; }
+        else ok = v !== '' && norm(v) === norm(c.a);
+        done({ ok: ok, marks: [[c.id, ok]], given: v || 'no answer', right: String(c.a) });
+      });
+      add(body, [h('div', { class: 'card-q' }, parts[0], inp, parts[1] || ''), h('p', { class: 'hint' }, f === 'num' ? 'Numbers only.' : 'Type the missing word or words.'), go]);
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go.click(); });
+      return;
+    }
+    if (f === 'select') {
+      var p2 = c.text.split('___');
+      var sel = h('select', { class: 'tsel', 'aria-label': 'Choose the answer' }, h('option', { value: '' }, 'Choose…'), shuffle([c.a].concat(c.d)).map(function (o) { return h('option', { value: o }, o); }));
+      add(body, [h('div', { class: 'card-q' }, p2[0], sel, p2[1] || ''),
+        btn('Next', 'primary', function () { var ok = sel.value === c.a; done({ ok: ok, marks: [[c.id, ok]], given: sel.value || 'no answer', right: c.a }); })]);
+      return;
+    }
+    if (f === 'match') {
+      var rows, opts, q;
+      if (c.kind === 'pairs') {
+        var s = c.m.matches[c.set], all = s.pairs.map(function (p, j) { return { id: c.id + '.' + j, l: p[0], r: p[1] }; });
+        rows = pick(all, Math.min(4, all.length));
+        var spare = shuffle(all.filter(function (x) { return rows.indexOf(x) < 0; })).slice(0, 1); // one extra answer that matches nothing
+        opts = shuffle(rows.concat(spare).map(function (x) { return x.r; })); q = s.title + ': choose the correct match for each item.';
+      } else {
+        rows = shuffle(c.rows).slice(0, 5).map(function (x) { return { id: c.id, l: x[0], r: c.cats[x[1]] }; });
+        opts = c.cats.slice(); q = c.q;
+      }
+      var sels = rows.map(function (x) {
+        var sl = h('select', { class: 'tsel wide', 'aria-label': x.l }, h('option', { value: '' }, 'Choose…'), opts.map(function (o) { return h('option', { value: o }, o); }));
+        return { x: x, sl: sl };
+      });
+      add(body, [h('div', { class: 'card-q small' }, q), h('div', { class: 'mlist' }, sels.map(function (z) { return h('label', { class: 'mrow' }, h('span', null, z.x.l), z.sl); })),
+        btn('Next', 'primary', function () {
+          var marks = [], n = 0, wrong = [];
+          sels.forEach(function (z) { var ok = z.sl.value === z.x.r; if (ok) n++; else wrong.push(z.x.l + ' → ' + z.x.r); if (c.kind === 'pairs') marks.push([z.x.id, ok]); });
+          var ok = n === sels.length; if (c.kind === 'sort') marks.push([c.id, ok]);
+          done({ ok: ok, marks: marks, given: n + ' of ' + sels.length + ' matched', right: wrong.join('; '), q: q });
+        })]);
+      return;
+    }
+    if (f === 'diagram') {
+      var d = c.m.diagrams[c.dg], fig = h('div', { class: 'fig' }, h('div', { html: '<svg viewBox="0 0 340 220" role="img" aria-label="' + d.title + '">' + d.svg + '</svg>' }));
+      d.marks.forEach(function (k, j) { fig.appendChild(h('span', { class: 'pin still', style: 'left:' + (k.x / 340 * 100) + '%;top:' + (k.y / 220 * 100) + '%' }, String(j + 1))); });
+      var ask = shuffle(d.marks.map(function (k, j) { return { k: k, j: j }; })).slice(0, Math.min(3, d.marks.length)).sort(function (a, b) { return a.j - b.j; });
+      var labels = shuffle(d.marks.map(function (k) { return k.l; }));
+      var ds = ask.map(function (a) { return { a: a, sl: h('select', { class: 'tsel wide', 'aria-label': 'Marker ' + (a.j + 1) }, h('option', { value: '' }, 'Choose…'), labels.map(function (o) { return h('option', { value: o }, o); })) }; });
+      add(body, [h('div', { class: 'card-q small' }, d.title + ': what is at each numbered marker?'), fig,
+        h('div', { class: 'mlist' }, ds.map(function (z) { return h('label', { class: 'mrow' }, h('span', null, 'Marker ' + (z.a.j + 1)), z.sl); })),
+        btn('Next', 'primary', function () {
+          var marks = [], n = 0, wrong = [];
+          ds.forEach(function (z) { var ok = z.sl.value === z.a.k.l; if (ok) n++; else wrong.push('Marker ' + (z.a.j + 1) + ' → ' + z.a.k.l); marks.push([c.id + '.' + z.a.j, ok]); });
+          done({ ok: n === ds.length, marks: marks, given: n + ' of ' + ds.length + ' correct', right: wrong.join('; '), q: d.title });
+        })]);
+    }
+  }
+
+  function rvResult(day, mock, res) {
+    var r = rvState(), score = 0, byF = {};
+    res.forEach(function (x) {
+      x.marks.forEach(function (mk) { mark(mk[0], mk[1]); });
+      if (x.ok) score++;
+      var b = byF[x.c.fmt] = byF[x.c.fmt] || { s: 0, n: 0 }; b.n++; if (x.ok) b.s++;
+      var g = r.fmt[x.c.fmt] = r.fmt[x.c.fmt] || { s: 0, n: 0 }; g.n++; if (x.ok) g.s++;
+    });
+    var frac = score / res.length, key = mock ? 'mock' : day.n, rec = r.days[key] = r.days[key] || { best: 0, tries: 0 };
+    rec.tries++; rec.best = Math.max(rec.best, frac); rec.last = frac; save();
+    var need = Math.ceil(CFG.passMark * res.length), pass = score >= need;
+    var weakest = RV.formats.filter(function (f) { return byF[f[0]]; }).sort(function (a, b) { return byF[a[0]].s / byF[a[0]].n - byF[b[0]].s / byF[b[0]].n; })[0];
+    var wrong = res.filter(function (x) { return !x.ok; });
+    show(topbar(mock ? 'Mock result' : 'Day ' + day.n + ' result', rvHome),
+      h('div', { class: 'panel hero' }, h('div', { class: 'big' }, score + ' / ' + res.length), h('div', null, pct(frac) + ' · pass mark ' + need + ' (' + pct(CFG.passMark) + ')'),
+        h('div', { class: 'ready ' + (pass ? 'yes' : '') }, pass ? 'Pass.' : 'Not yet.' + (weakest && byF[weakest[0]].s < byF[weakest[0]].n ? ' Weakest format: ' + weakest[1] + '.' : ''))),
+      h('h2', null, 'By exam format'),
+      RV.formats.filter(function (f) { return byF[f[0]]; }).map(function (f) {
+        var b = byF[f[0]], x = b.s / b.n;
+        return h('div', { class: 'urow' }, h('div', { class: 'uname' }, f[1], h('b', null, b.s + ' / ' + b.n)), bar(x, x >= CFG.passMark ? 'good' : x < 0.5 ? 'weak' : ''));
+      }),
+      wrong.length ? h('h2', null, 'Review (' + wrong.length + ')') : null,
+      wrong.map(function (x) {
+        var c = x.c, multi = c.fmt === 'match' || c.fmt === 'diagram';
+        return h('div', { class: 'panel rev' }, h('div', { class: 'fmt' }, h('b', null, FMT[c.fmt].name)),
+          h('p', { class: 'q' }, x.q || c.q || c.text.replace('___', '_____')),
+          h('p', { class: 'no' }, (multi ? 'You got: ' : 'Your answer: ') + x.given),
+          h('p', { class: 'ok' }, (multi ? 'Correct: ' : (c.fmt === 'seq' || c.fmt === 'rank' ? 'Correct order: ' : 'Correct answer: ')) + x.right),
+          h('small', null, c.m ? c.m.title + ' · ' + c.m.units[c.u] : 'Revision · Day ' + c.day));
+      }),
+      btn(mock ? 'Sit another mock' : 'Sit this day again', 'primary', function () { rvStart(day, mock); }), btn('Back to countdown', '', rvHome));
   }
 
   /* ---------- start ---------- */
