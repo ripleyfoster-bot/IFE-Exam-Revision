@@ -60,7 +60,7 @@
     var it = [];
     m.cards.forEach(function (c, i) { it.push({ id: m.id + '.c' + i, type: 'card', u: c[0], q: c[1], a: c[2] }); });
     m.fills.forEach(function (f, i) { it.push({ id: m.id + '.f' + i, type: 'fill', u: f[0], text: f[1], a: f[2], d: f[3] }); });
-    m.questions.forEach(function (q, i) { it.push({ id: m.id + '.q' + i, type: 'q', u: q.u, q: q.q, o: q.o, a: q.a, order: q.order }); });
+    m.questions.forEach(function (q, i) { it.push({ id: m.id + '.q' + i, type: 'q', u: q.u, q: q.q, o: q.o, a: q.a, order: q.order, g: q.g || [] }); });
     m.matches.forEach(function (s, i) { s.pairs.forEach(function (p, j) { it.push({ id: m.id + '.p' + i + '.' + j, type: 'pair', u: s.u, set: i, k: j }); }); });
     m.diagrams.forEach(function (d, i) { d.marks.forEach(function (k, j) { it.push({ id: m.id + '.d' + i + '.' + j, type: 'mark', u: d.u, dg: i, k: j }); }); });
     m._items = it;
@@ -343,12 +343,23 @@
 
   /* ---------- final exam ---------- */
   function examPaper(m) {
-    var qs = m._items.filter(function (x) { return x.type === 'q'; }), n = Math.min(CFG.examLength, qs.length), out = [];
-    // share questions across units in proportion to how many each unit has
-    var byU = {}; qs.forEach(function (q) { (byU[q.u] = byU[q.u] || []).push(q); });
-    Object.keys(byU).forEach(function (u) { byU[u] = shuffle(byU[u]); out = out.concat(byU[u].splice(0, Math.floor(byU[u].length * n / qs.length))); });
-    var rest = shuffle([].concat.apply([], Object.keys(byU).map(function (u) { return byU[u]; })));
-    return shuffle(out.concat(rest.slice(0, n - out.length)));
+    var qs = m._items.filter(function (x) { return x.type === 'q'; }), n = Math.min(CFG.examLength, qs.length);
+    var out = [], taken = {}, byU = {}, left = [];
+    // a question clashes if it shares a topic tag with one already on the paper
+    function free(q) { return q.g.every(function (t) { return !taken[t]; }); }
+    function take(q) { out.push(q); q.g.forEach(function (t) { taken[t] = true; }); }
+    qs.forEach(function (q) { (byU[q.u] = byU[q.u] || []).push(q); });
+    // first pass: each unit gets its share of the paper, in proportion to its question count
+    Object.keys(byU).forEach(function (u) {
+      var quota = Math.floor(byU[u].length * n / qs.length), got = 0;
+      shuffle(byU[u]).forEach(function (q) { if (got < quota && free(q)) { take(q); got++; } else left.push(q); });
+    });
+    // second pass: top up from whatever is left, still avoiding clashes
+    left = shuffle(left);
+    left.forEach(function (q) { if (out.length < n && free(q)) take(q); });
+    // last resort (small banks only): allow clashes rather than set a short paper
+    left.forEach(function (q) { if (out.length < n && out.indexOf(q) < 0) out.push(q); });
+    return shuffle(out);
   }
   function exam(m) {
     var paper = examPaper(m), i = 0, res = [];
