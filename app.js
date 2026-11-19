@@ -46,7 +46,147 @@
   }
   function btn(label, cls, fn) { return h('button', { class: 'btn ' + (cls || ''), type: 'button', onclick: fn }, label); }
   function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
-  function show() { app.innerHTML = ''; for (var i = 0; i < arguments.length; i++) add(app, arguments[i]); window.scrollTo(0, 0); }
+  function show() {
+    sayStop();
+    app.innerHTML = ''; for (var i = 0; i < arguments.length; i++) add(app, arguments[i]);
+    var top = app.querySelector('header.top');
+    if (top && SAY.ok && app.querySelector('.task, .rev, .hero.res')) top.appendChild(sayBtn());
+    window.scrollTo(0, 0);
+  }
+
+  /* ---------- read aloud (v0.10.0) ----------
+     Uses the device's own voice (Web Speech API): no internet, no AI, nothing leaves the device.
+     British English voice where the device has one. Reads what is on screen, in order, so it
+     works for every question format without per-format text. Tap again to stop. */
+  var SAY = { ok: !!(window.speechSynthesis && window.SpeechSynthesisUtterance), on: false, tok: 0, btn: null, voice: null };
+  var SPK_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+  var STOP_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>';
+  function pickVoice() {
+    if (!SAY.ok) return;
+    var vs = window.speechSynthesis.getVoices() || [], gb = vs.filter(function (v) { return /en[-_]GB/i.test(v.lang); });
+    SAY.voice = gb.filter(function (v) { return v.localService; })[0] || gb[0] || null;
+  }
+  if (SAY.ok) {
+    pickVoice();
+    if (window.speechSynthesis.addEventListener) window.speechSynthesis.addEventListener('voiceschanged', pickVoice);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) sayStop(); });
+  }
+  function sayMark(el, on) {
+    if (!el) return;
+    el.classList.toggle('on', on); el.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (el.classList.contains('say')) { el.innerHTML = on ? STOP_ICON : SPK_ICON; el.setAttribute('aria-label', on ? 'Stop reading' : 'Read aloud'); }
+    else el.textContent = on ? '■ Stop' : '🔊 Read this';
+  }
+  function sayStop() {
+    if (!SAY.ok) return;
+    SAY.tok++; SAY.on = false;
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    sayMark(SAY.btn, false); SAY.btn = null;
+  }
+  function sayClean(s) {
+    return String(s)
+      .replace(/Marker (\d+)\s*→\s*/g, 'Marker $1 is ')
+      // in a list clause, two or more arrows are an order ("then"); one arrow is a pair ("goes with")
+      .split(/(;|\. )/).map(function (cl) { return (cl.match(/→/g) || []).length > 1 ? cl.replace(/\s*→\s*/g, ', then ') : cl.replace(/\s*→\s*/g, ' goes with '); }).join('')
+      .replace(/\s*[·•]\s*/g, ', ').replace(/[×✓✗⚑⚐‹›]/g, ' ')
+      .replace(/(\d+)\s*\/\s*(\d+)/g, '$1 out of $2').replace(/_{2,}/g, ' blank ')
+      .replace(/\s+/g, ' ').replace(/\s+([.,;:!?])/g, '$1').trim();
+  }
+  // split into sentences: short utterances avoid the Chrome cut-off on long ones
+  function saySplit(t) {
+    var out = [];
+    t.replace(/([.!?:;])\s+(?=[A-Z0-9"'(])/g, '$1\u0001').split('\u0001').forEach(function (s) { // no look-behind: older iPhones can't parse it
+      while (s.length > 220) { var k = s.lastIndexOf(', ', 220); if (k < 60) k = s.lastIndexOf(' ', 220); if (k < 1) k = 220; out.push(s.slice(0, k + 1)); s = s.slice(k + 1).trim(); }
+      if (s.trim()) out.push(s.trim());
+    });
+    return out;
+  }
+  function say(text, el) {
+    if (!SAY.ok) return;
+    var wasMine = SAY.on && SAY.btn === el;
+    sayStop();
+    if (wasMine) return; // second tap on the same button stops it
+    var parts = saySplit(sayClean(text));
+    if (!parts.length) return;
+    var tok = SAY.tok; SAY.on = true; SAY.btn = el; sayMark(el, true);
+    parts.forEach(function (p, k) {
+      var u = new window.SpeechSynthesisUtterance(p);
+      u.lang = 'en-GB'; u.rate = 1; u.pitch = 1; if (SAY.voice) u.voice = SAY.voice;
+      if (k === parts.length - 1) u.onend = function () { if (tok === SAY.tok) { SAY.on = false; sayMark(SAY.btn, false); SAY.btn = null; } };
+      u.onerror = function () { if (tok === SAY.tok) { SAY.on = false; sayMark(SAY.btn, false); SAY.btn = null; } };
+      window.speechSynthesis.speak(u); // queued now, inside the tap, so iPhone allows it
+    });
+  }
+  // the readable text of one element: blanks, typed answers and dropdowns are spoken, buttons are not
+  function sayText(el) {
+    var out = '';
+    (function walk(n) {
+      if (n.nodeType === 3) { out += n.data; return; }
+      if (n.nodeType !== 1 || n.hidden || n.getAttribute('aria-hidden') === 'true') return;
+      var tg = n.tagName;
+      if (tg === 'BUTTON' || tg === 'SVG' || tg === 'svg' || tg === 'OPTION') return;
+      if (tg === 'INPUT') { out += ' blank' + (n.value.trim() ? ', you typed ' + n.value.trim() + ',' : '') + ' '; return; }
+      if (tg === 'SELECT') { out += ' blank' + (n.value ? ', you chose ' + n.value + ',' : '') + ' '; return; }
+      if (n.classList.contains('blank')) { out += n.textContent.trim() ? ' ' + n.textContent.trim() + ' ' : ' blank '; return; }
+      for (var c = n.firstChild; c; c = c.nextSibling) walk(c);
+      if (/^(DIV|P|LI|H1|H2|STRONG|SMALL|BR)$/.test(tg)) out = /[.!?:;,]\s*$/.test(out) || !out.trim() ? out + ' ' : out.replace(/\s*$/, '. ');
+    })(el);
+    return out.replace(/\s+/g, ' ').trim();
+  }
+  function sayEnd(s) { s = s.trim(); return !s ? '' : /[.!?:]$/.test(s) ? s + ' ' : s + '. '; }
+  function sayList(els, fn) { return Array.prototype.map.call(els, fn).filter(Boolean).join(' '); }
+  // everything readable on the current screen, top to bottom
+  function sayScreen() {
+    var out = '', revN = 0;
+    var parts = app.querySelectorAll('.card-q, .card-a, .hint, .opts, ol.seq, .bank, .alist, .mlist, .mgrid, .dkey, ol.key, .fb, .hero.res, .panel.rev');
+    Array.prototype.forEach.call(parts, function (el) {
+      if (el.closest('[hidden]') || el.closest('.qmap') || el.classList.contains('gap')) return;
+      if (el.parentNode.closest('.fb, .panel.rev, .hero.res')) return; // already read as part of its box
+      var c = el.classList;
+      if (c.contains('card-q')) {
+        out += sayEnd(sayText(el));
+        var sl = el.querySelector('select');
+        if (sl) out += sayEnd('Choices: ' + Array.prototype.slice.call(sl.options, 1).map(function (o) { return o.textContent; }).join('; '));
+      }
+      else if (c.contains('card-a')) out += sayEnd('Answer: ' + sayText(el));
+      else if (c.contains('hint')) out += sayEnd(sayText(el));
+      else if (c.contains('opts')) out += sayList(el.children, function (b, k) {
+        var s = b.classList;
+        return sayEnd('Option ' + (k + 1) + ': ' + b.textContent + (s.contains('ok') ? ', correct answer' : s.contains('no') ? ', wrong' : s.contains('sel') ? ', selected' : ''));
+      }) + ' ';
+      else if (el.tagName === 'OL' && c.contains('seq')) { if (el.children.length) out += sayEnd('Your order so far: ' + sayList(el.children, function (li) { return sayEnd(li.textContent); })); }
+      else if (c.contains('bank')) {
+        var chips = Array.prototype.filter.call(el.children, function (b) { return !b.classList.contains('used'); });
+        if (chips.length) out += sayEnd((el.closest('.dside') ? 'Labels' : 'Items still to place') + ': ' + chips.map(function (b) { return b.textContent; }).join('; '));
+      }
+      else if (c.contains('alist')) out += sayEnd('Answers') + sayList(el.children, function (li) { return sayEnd(li.children[0].textContent + ': ' + li.children[1].textContent); }) + ' ';
+      else if (c.contains('mlist')) out += sayList(el.children, function (r, k) {
+        var pick = r.querySelector('.lpick').textContent;
+        return sayEnd('Item ' + (k + 1) + ': ' + r.children[0].textContent) + sayEnd(/^Not/.test(pick) ? 'Not answered yet' : 'Your answer: ' + pick);
+      }) + ' ';
+      else if (c.contains('mgrid')) out += sayList(el.children, function (col, k) {
+        var left = Array.prototype.filter.call(col.children, function (b) { return !b.classList.contains('ok'); });
+        return left.length ? sayEnd((k ? 'Right column' : 'Left column') + ': ' + left.map(function (b) { return b.textContent; }).join('; ')) : '';
+      }) + ' ';
+      else if (c.contains('dkey')) out += sayList(el.children, function (r) { return sayEnd('Marker ' + r.children[0].textContent + ': ' + r.children[1].textContent); }) + ' ';
+      else if (el.tagName === 'OL' && c.contains('key')) out += sayList(el.children, function (li, k) { return sayEnd('Marker ' + (k + 1) + ': ' + (li.textContent === '?' ? 'not placed yet' : li.textContent)); }) + ' ';
+      else if (c.contains('fb')) out += sayEnd(sayText(el));
+      else if (c.contains('res')) out += sayEnd(sayText(el));
+      else if (c.contains('rev')) out += sayEnd('Review ' + (++revN)) + sayEnd(sayText(el));
+    });
+    return out.trim() || 'Nothing to read on this screen.';
+  }
+  function sayBtn() {
+    var b = h('button', { class: 'say', type: 'button', 'aria-label': 'Read aloud', 'aria-pressed': 'false', title: 'Read aloud', onclick: function () { say(sayScreen(), b); } });
+    b.innerHTML = SPK_ICON;
+    return b;
+  }
+  // small button inside a feedback box: reads just that box
+  function sayBox(box) {
+    if (!SAY.ok) return null;
+    var b = h('button', { class: 'btn link saybox', type: 'button', 'aria-pressed': 'false', onclick: function () { say(sayText(box), b); } }, '🔊 Read this');
+    return b;
+  }
   function pct(x) { return Math.round(x * 100) + '%'; }
   function topbar(title, back, right) {
     return h('header', { class: 'top' },
@@ -117,7 +257,8 @@
         u.name ? h('p', null, h('b', null, u.name), u.company ? ', ' + u.company : '', u.exam ? ' · exam ' + u.exam.split('-').reverse().join('/') : '') : null,
         btn('Change my details', '', function () { welcome(true); }),
         h('p', { class: 'gap' }, 'Version ' + CFG.version + '. Your details and progress are stored on this device only.'),
-        h('p', null, 'AI tutor: ' + (AI.on ? 'on' : 'off in this version') + '.')),
+        h('p', null, 'AI tutor: ' + (AI.on ? 'on' : 'off in this version') + '.'),
+        h('p', null, SAY.ok ? 'Read aloud: tap the speaker at the top of any question or result to hear it, and tap again to stop. It uses this device\'s own voice' + (SAY.voice ? ' (' + SAY.voice.name + ')' : '') + ' and works offline.' : 'Read aloud: this browser has no built-in voice, so the speaker button is hidden.')),
       h('div', { class: 'panel' }, h('h2', { class: 'in' }, 'Course material and disclaimer'), notices()),
       h('p', { class: 'copy' }, COPY),
       btn('Reset all progress', 'bad', function () {
@@ -250,7 +391,7 @@
       var weak = {}; missed.forEach(function (t) { weak[t.u] = (weak[t.u] || 0) + 1; });
       var names = Object.keys(weak).sort(function (a, b) { return weak[b] - weak[a]; }).slice(0, 2).map(function (u) { return m.units[u]; });
       show(topbar(title, function () { modScreen(m); }),
-        h('div', { class: 'panel hero' }, h('div', { class: 'big' }, right + ' / ' + tasks.length), h('div', null, 'known this round'),
+        h('div', { class: 'panel hero res' }, h('div', { class: 'big' }, right + ' / ' + tasks.length), h('div', null, 'known this round'),
           names.length ? h('div', { class: 'ready' }, 'Most misses in: ' + names.join('; ')) : h('div', { class: 'ready yes' }, 'Clean round.')),
         btn('Go again', 'primary', again), btn('Back to module', '', function () { modScreen(m); }));
     }
@@ -264,6 +405,7 @@
   /* ---------- task renderers ---------- */
   function feedback(m, ok, text, t) {
     var box = h('div', { class: 'fb ' + (ok ? 'ok' : 'no') }, h('strong', null, ok ? 'Correct. ' : 'Not quite. '), text || '', t && t.x ? h('p', { class: 'note' }, t.x) : null);
+    add(box, sayBox(box));
     if (!ok && AI.on) {
       var out = h('p', { class: 'ai' });
       box.appendChild(btn('Explain this', 'link', function () {
@@ -453,7 +595,7 @@
       var need = Math.ceil(CFG.passMark * paper.length), pass = score >= need;
       var wrong = res.filter(function (r) { return !r.ok; });
       show(topbar('Exam result', function () { modScreen(m); }),
-        h('div', { class: 'panel hero' }, h('div', { class: 'big' }, score + ' / ' + paper.length), h('div', null, pct(score / paper.length) + ' · pass mark ' + need + ' (' + pct(CFG.passMark) + ')'),
+        h('div', { class: 'panel hero res' }, h('div', { class: 'big' }, score + ' / ' + paper.length), h('div', null, pct(score / paper.length) + ' · pass mark ' + need + ' (' + pct(CFG.passMark) + ')'),
           h('div', { class: 'ready ' + (pass ? 'yes' : '') }, pass ? 'Pass.' : 'Not yet. Use Train me on the weaker units below.')),
         h('h2', null, 'By unit'),
         Object.keys(byU).map(function (u) { var b = byU[u], f = b.s / b.n; return h('div', { class: 'urow' }, h('div', { class: 'uname' }, m.units[u], h('b', null, b.s + ' / ' + b.n)), bar(f, f >= CFG.passMark ? 'good' : f < 0.5 ? 'weak' : '')); }),
@@ -515,7 +657,7 @@
       var un = [], fl = [];
       P.forEach(function (c, k) { if (!xAnswered(c, A[k].st)) un.push(k + 1); if (A[k].flag) fl.push(k + 1); });
       show(topbar('Check your answers', o.leave),
-        h('div', { class: 'panel hero' }, h('div', { class: 'big' }, (P.length - un.length) + ' / ' + P.length), h('div', null, 'answered'),
+        h('div', { class: 'panel hero res' }, h('div', { class: 'big' }, (P.length - un.length) + ' / ' + P.length), h('div', null, 'answered'),
           h('div', { class: 'ready' + (un.length || fl.length ? '' : ' yes') },
             un.length ? 'Not answered: ' + un.join(', ') + '.' : 'Every question has an answer.',
             fl.length ? h('br') : null, fl.length ? 'Flagged: ' + fl.join(', ') + '.' : null)),
@@ -859,7 +1001,7 @@
     var weakest = RV.formats.filter(function (f) { return byF[f[0]]; }).sort(function (a, b) { return byF[a[0]].s / byF[a[0]].n - byF[b[0]].s / byF[b[0]].n; })[0];
     var wrong = res.filter(function (x) { return !x.ok; });
     show(topbar(mock ? 'Mock result' : 'Day ' + day.n + ' result', rvHome),
-      h('div', { class: 'panel hero' }, h('div', { class: 'big' }, score + ' / ' + res.length), h('div', null, pct(frac) + ' · pass mark ' + need + ' (' + pct(CFG.passMark) + ')'),
+      h('div', { class: 'panel hero res' }, h('div', { class: 'big' }, score + ' / ' + res.length), h('div', null, pct(frac) + ' · pass mark ' + need + ' (' + pct(CFG.passMark) + ')'),
         h('div', { class: 'ready ' + (pass ? 'yes' : '') }, pass ? 'Pass.' : 'Not yet.' + (weakest && byF[weakest[0]].s < byF[weakest[0]].n ? ' Weakest format: ' + weakest[1] + '.' : ''))),
       h('h2', null, 'By exam format'),
       RV.formats.filter(function (f) { return byF[f[0]]; }).map(function (f) {
