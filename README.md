@@ -1,6 +1,6 @@
 # IFE Level 3 Revision (PWA)
 
-Adaptive revision app. Version 0.3.0 contains Modules One, Two and Three. No AI and no sign-in in this version.
+Adaptive revision app. Version 0.3.1 contains Modules One, Two and Three. No AI and no sign-in in this version.
 
 ## Files
 

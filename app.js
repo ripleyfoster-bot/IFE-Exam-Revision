@@ -100,9 +100,6 @@
       return h('button', { class: 'modcard', type: 'button', onclick: function () { unitFilter = -1; modScreen(m); } },
         h('strong', null, m.title), h('span', null, m.subtitle), bar(st.mastery), h('small', null, pct(st.mastery) + ' mastered'));
     });
-    ['Module Two', 'Module Three', 'Module Four'].slice(MODS.length - 1).forEach(function (t) {
-      list.push(h('div', { class: 'modcard off' }, h('strong', null, t), h('span', null, 'Not built yet')));
-    });
     show(topbar('IFE Level 3 Revision', null, h('button', { class: 'link', type: 'button', onclick: about }, 'About')),
       h('p', { class: 'lead' }, 'Pick a module. The app tracks what you know and steers practice to your weak spots.'), list);
   }
