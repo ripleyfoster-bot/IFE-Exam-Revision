@@ -107,5 +107,5 @@ h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color
 .pin.ok { background: var(--good); color: #fff; } .pin.no { background: var(--bad); color: #fff; }
 .key { padding-left: 26px; color: var(--mute); } .key li.ok { color: var(--good); font-weight: 600; }
 
-.rev .q { font-weight: 600; } .rev .no { color: var(--bad); } .rev .ok { color: var(--good); } .rev small { color: var(--mute); }
+.rev .q { font-weight: 600; } .marks { list-style: none; padding: 0; margin: 0 0 10px; } .marks li { margin-bottom: 6px; } .marks .miss { color: var(--mid); } .marks em { font-style: normal; opacity: 0.85; } .rev .no { color: var(--bad); } .rev .ok { color: var(--good); } .rev small { color: var(--mute); }
 @media (min-width: 600px) { .tiles { grid-template-columns: repeat(4, 1fr); } }

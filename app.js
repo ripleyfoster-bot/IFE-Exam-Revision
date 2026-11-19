@@ -259,7 +259,7 @@
     }));
     go = btn(examMode ? 'Next' : 'Check', 'primary', function () {
       var ok = sel.length === t.a.length && sel.every(function (i) { return t.a.indexOf(i) >= 0; }); locked = true;
-      if (examMode) return done(ok, sel.map(function (i) { return t.o[i]; }).join('; '));
+      if (examMode) return done(ok, sel.map(function (i) { return t.o[i]; }).join('; '), sel.slice());
       go.hidden = true;
       Array.prototype.forEach.call(grid.children, function (b) {
         var i = +b.getAttribute('data-i'), right = t.a.indexOf(i) >= 0;
@@ -356,7 +356,7 @@
       if (i >= paper.length) return result();
       var t = paper[i], body = h('div', { class: 'task' });
       show(topbar('Final exam', function () { if (window.confirm('Leave the exam? This attempt will not be saved.')) modScreen(m); }, (i + 1) + ' / ' + paper.length), bar(i / paper.length, 'thin'), body);
-      renderQ(m, t, body, function (ok, given) { res.push({ t: t, ok: ok, given: given }); i++; next(); }, true);
+      renderQ(m, t, body, function (ok, given, picks) { res.push({ t: t, ok: ok, given: given, picks: picks }); i++; next(); }, true);
     }
     function result() {
       var score = 0, byU = {};
@@ -371,8 +371,21 @@
         Object.keys(byU).map(function (u) { var b = byU[u], f = b.s / b.n; return h('div', { class: 'urow' }, h('div', { class: 'uname' }, m.units[u], h('b', null, b.s + ' / ' + b.n)), bar(f, f >= CFG.passMark ? 'good' : f < 0.5 ? 'weak' : '')); }),
         wrong.length ? h('h2', null, 'Review (' + wrong.length + ')') : null,
         wrong.map(function (r) {
-          var correct = r.t.order ? r.t.order.join(' → ') : r.t.a.map(function (k) { return r.t.o[k]; }).join('; ');
-          return h('div', { class: 'panel rev' }, h('p', { class: 'q' }, r.t.q), h('p', { class: 'no' }, 'You: ' + (r.given || 'no answer')), h('p', { class: 'ok' }, 'Correct: ' + correct), h('small', null, m.units[r.t.u]));
+          var t = r.t, detail;
+          if (t.order) {
+            detail = [h('p', { class: 'no' }, 'Your order: ' + (r.given || 'no answer')), h('p', { class: 'ok' }, 'Correct order: ' + t.order.join(' → '))];
+          } else {
+            // one line per option that matters: right pick, wrong pick, or missed
+            var picks = r.picks || [], rows = [], one = t.a.length === 1;
+            t.o.forEach(function (text, k) {
+              var right = t.a.indexOf(k) >= 0, picked = picks.indexOf(k) >= 0;
+              if (right && picked) rows.push(h('li', { class: 'ok' }, h('b', null, '✓ '), text));
+              else if (!right && picked) rows.push(h('li', { class: 'no' }, h('b', null, '✗ '), text, h('em', null, one ? ' (your answer)' : ' (should not be selected)')));
+              else if (right) rows.push(h('li', { class: 'miss' }, h('b', null, '+ '), text, h('em', null, one ? ' (correct answer)' : ' (missed)')));
+            });
+            detail = h('ul', { class: 'marks' }, rows);
+          }
+          return h('div', { class: 'panel rev' }, h('p', { class: 'q' }, t.q), detail, h('small', null, m.units[t.u]));
         }),
         btn('Back to module', 'primary', function () { modScreen(m); }));
     }
