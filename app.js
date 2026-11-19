@@ -240,7 +240,7 @@
       var t = tasks[i], body = h('div', { class: 'task' });
       show(topbar(title, function () { modScreen(m); }, (i + 1) + ' / ' + tasks.length), bar(i / tasks.length, 'thin'), body);
       body.appendChild(h('div', { class: 'utag' }, m.units[t.u]));
-      if (t.src === 'mock') body.appendChild(h('div', { class: 'utag' }, MOCKTAG));
+      if (SRCTAG[t.src]) body.appendChild(h('div', { class: 'utag' }, SRCTAG[t.src]));
       var done = function (ok) { if (ok !== null) mark(t.id, ok); if (ok) right++; else missed.push(t); i++; next(); };
       if (t.type === 'card') renderCard(t, body, done);
       else if (t.type === 'fill') renderFill(m, t, body, done);
@@ -442,7 +442,7 @@
     paperRun({
       title: 'Final exam', paper: paper,
       leave: function () { if (window.confirm('Leave the exam? This attempt will not be saved.')) modScreen(m); },
-      head: function (c, body) { if (c.src === 'mock') body.appendChild(h('div', { class: 'utag' }, MOCKTAG)); },
+      head: function (c, body) { if (SRCTAG[c.src]) body.appendChild(h('div', { class: 'utag' }, SRCTAG[c.src])); },
       finish: result
     });
     function result(res) {
@@ -482,7 +482,8 @@
   /* ---------- exam-style paper runner: flag, go back, check your answers, then submit ---------- */
   // Used by the module final exams and every Revision paper. Answers are kept per question
   // (st), so moving back and forward never loses them. Nothing is marked until Submit.
-  var MOCKTAG = 'From the mock exam only: no course pack gives this order';
+  // items whose order or answer comes from outside the course packs carry a visible label
+  var SRCTAG = { mock: 'From the mock exam only: no course pack gives this order', handout: 'From the revision handout only: no course pack gives this order' };
   function paperRun(o) {
     var P = o.paper, A = P.map(function () { return { st: {}, flag: false }; }), i = 0;
     function grid(cur) {
@@ -779,7 +780,7 @@
       head: function (c, body) {
         add(body, [h('div', { class: 'fmt' }, h('b', null, FMT[c.fmt].name), ' · ', FMT[c.fmt].how),
           h('div', { class: 'utag' }, c.m ? c.m.title + ' · ' + c.m.units[c.u] : 'Day ' + c.day + ': ' + RV.days[c.day - 1].title),
-          c.src === 'mock' ? h('div', { class: 'utag' }, MOCKTAG) : null]);
+          SRCTAG[c.src] ? h('div', { class: 'utag' }, SRCTAG[c.src]) : null]);
       },
       finish: function (res) { rvResult(day, mock, res); }
     });

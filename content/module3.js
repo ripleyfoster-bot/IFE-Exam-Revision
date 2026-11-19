@@ -239,7 +239,9 @@ window.IFE_MODULES.push({
       ['Environmental impact', 'Adjacent buildings and hazardous releases'],
       ['BS 7974', 'Fire safety engineering principles for buildings'],
       ['BS 9991', 'Residential buildings']
-    ]}
+    ]},
+    /* v0.9.0: look-alike set L2 (review section 10c) */
+    { u: 2, title: 'Sprinkler systems: what fills the pipes?', pairs: [['Wet pipe', 'Water in the pipes at all times'], ['Dry pipe', 'Air under pressure; a head opening lets the water in'], ['Pre-action', 'Air in the pipes; a detector operating lets the water in'], ['Alternate', 'Water in summer; air under pressure in winter']] },
   ],
 
   /* svg is drawn in a 340 x 220 box. marks = numbered pins with their labels. */
@@ -464,6 +466,8 @@ window.IFE_MODULES.push({
     { u: 4, g: ['fe-assume'], q: 'Which statement about fire engineering and passive fire protection is correct?', o: ['It should not be assumed that fire engineering will factor out prescriptive passive fire protection', 'Fire engineering always removes passive fire protection', 'Fire engineering applies only to active systems', 'Passive fire protection is never engineered out'], a: [0] },
     { u: 4, g: ['whole-life'], q: 'Who must fully appreciate ongoing changes and maintenance in a fire engineered building?', o: ['The building\'s facilities management', 'Only the original architect', 'Only the fire service', 'Nobody, once the building is complete'], a: [0] },
     { u: 4, g: ['whole-life'], q: 'What can weaken the fire engineering assumptions of a building over time?', o: ['Unrepaired or incorrectly repaired penetrations through fire compartments', 'Annual servicing of extinguishers', 'Monthly visual inspections', 'Photoluminescent signage'], a: [0] },
-    { u: 4, g: ['bs7974'], q: 'Which standard covers the application of fire safety engineering principles to the design of buildings?', o: ['BS 7974', 'BS 9990', 'BS 5839-1', 'BS 5266-1'], a: [0] }
+    { u: 4, g: ['bs7974'], q: 'Which standard covers the application of fire safety engineering principles to the design of buildings?', o: ['BS 7974', 'BS 9990', 'BS 5839-1', 'BS 5266-1'], a: [0] },
+    /* v0.9.0: order question O13 (review section 10b) */
+    { u: 2, g: ['dry-pipe'], q: 'A dry pipe sprinkler system: place these events in order.', order: ['Sprinkler head opens', 'Air pressure in the pipes drops', 'Control valve opens', 'Water flows through the pipework onto the fire'] },
   ]
 });

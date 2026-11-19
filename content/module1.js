@@ -167,7 +167,14 @@ window.IFE_MODULES.push({
     [6, 'The main ___ is responsible for co-ordinating all the work on a project.', 'contractor', ['designer', 'client', 'inspector']],
     [6, 'At handover, certificates of ___ from passive fire protection subcontractors are passed to the client.', 'conformity', ['completion', 'insurance', 'warranty']],
     [6, 'The building\'s fire safety ___ should be compiled by the designer for the occupier.', 'manual', ['policy', 'invoice', 'survey']],
-    [6, 'Passive fire protection is often ___ or inaccessible once the building is complete.', 'hidden', ['removed', 'visible', 'replaced']]
+    [6, 'Passive fire protection is often ___ or inaccessible once the building is complete.', 'hidden', ['removed', 'visible', 'replaced']],
+    /* v0.9.0: blank variants B1-B6 (review section 10d) */
+    [5, 'Fire test reports provide details of the ___, configuration and test conditions.', 'specimen', ['sponsor', 'price', 'operator']],
+    [5, 'Fire test reports provide details of the specimen, ___ and test conditions.', 'configuration', ['certification', 'colour', 'cost']],
+    [4, 'The three fire resistance classifications are ___, integrity and insulation.', 'loadbearing capacity', ['reaction to fire', 'ignitability', 'durability']],
+    [4, 'The three fire resistance classifications are loadbearing capacity, ___ and insulation.', 'integrity', ['ignition', 'inspection', 'isolation']],
+    [1, 'The three elements of the fire triangle are ___, fuel and oxygen.', 'heat', ['light', 'smoke', 'carbon']],
+    [1, 'The three elements of the fire triangle are heat, ___ and oxygen.', 'fuel', ['water', 'smoke', 'light']],
   ],
 
   matches: [
@@ -195,9 +202,9 @@ window.IFE_MODULES.push({
       ['Superheated gases', 'Burn the respiratory tract']
     ]},
     { u: 1, title: 'How fires are put out', pairs: [
-      ['Fire blanket', 'Starves the fire of oxygen'],
+      ['Fire blanket', 'Covers a burning fryer to starve it of oxygen'],
       ['Water', 'Lowers fuel temperature below the ignition point'],
-      ['Foam', 'Denies the fire the oxygen it needs'],
+      ['Foam', 'Denies the fire oxygen; the mock exam adds cooling'],
       ['Inert gas', 'Attacks the chemical reaction directly']
     ]},
     { u: 2, title: 'Old assumption vs 1991 report finding', pairs: [
@@ -484,6 +491,15 @@ window.IFE_MODULES.push({
     { u: 6, g: ['early', 'inspect', 'handover'], q: 'Place these stages of a project in order.', order: ['Agree the fire strategy', 'Install passive fire protection', 'Inspect before fit-out', 'Hand over fire safety information', 'Maintain throughout the building\'s life'] },
     { u: 6, g: ['inspect'], q: 'Is a Building Control inspection alone enough to assure passive fire protection installation?', o: ['No: a project-based systematic inspection is recommended irrespective of it', 'Yes, always', 'Yes, for buildings under four storeys', 'Only if the installer agrees'], a: [0] },
     { u: 6, q: 'What can a lack of knowledge among those who procure and those who offer fire protection installation lead to?', o: ['Inappropriate installations', 'Higher fire resistance', 'Automatic certification', 'Shorter travel distances'], a: [0] },
-    { u: 6, g: ['strategy-brief'], q: 'What are the two fundamental questions behind a client\'s fire strategy brief?', o: ['Protect people and allow escape, or also protect the building and contents', 'Use steel or concrete', 'Follow BS or BS EN tests', 'Appoint one contractor or several'], a: [0] }
+    { u: 6, g: ['strategy-brief'], q: 'What are the two fundamental questions behind a client\'s fire strategy brief?', o: ['Protect people and allow escape, or also protect the building and contents', 'Use steel or concrete', 'Follow BS or BS EN tests', 'Appoint one contractor or several'], a: [0] },
+    /* v0.9.0: order questions O1-O6, O10 and the chain reaction (review section 10b) */
+    { u: 0, g: ['legislation-order'], q: 'Place this fire legislation in date order, earliest first.', order: ['London Building Act', 'Fire Safety of Places of Sport Act', 'Fire Precautions (Sub-Surface Railway Stations) Regulations'] },
+    { u: 0, g: ['death-toll'], q: 'Rank these fires by number of deaths, highest first.', order: ['San Francisco earthquake fires', 'Grenfell Tower fire', 'Bradford City stadium fire', 'King\'s Cross station fire', 'Great Fire of London'] },
+    { u: 1, g: ['flashover-build'], q: 'Place the build-up to flashover in order.', order: ['Hot smoke layer grows at the ceiling', 'Radiated heat heats exposed combustible surfaces', 'The surfaces give off flammable gases', 'The gases ignite throughout the smoke layer'] },
+    { u: 1, g: ['escape-order'], q: 'Place these points on an escape route in order.', order: ['Any point in the building', 'Place of relative safety, e.g. a protected stairwell', 'Final exit', 'Place of ultimate safety'] },
+    { u: 3, g: ['door-release'], q: 'Place these steps in order when active and passive measures work together.', order: ['Detector responds to heat or smoke', 'Signal actuates the fire alarm system', 'Fire door is closed automatically'] },
+    { u: 6, g: ['early', 'inspect', 'handover'], q: 'Place these stages of a building\'s life in order.', order: ['Client vision and brief', 'Basic fire strategy agreed early in design', 'Passive fire protection installed by competent installers', 'Fire provisions maintained throughout the building\'s life'] },
+    { u: 4, g: ['uk-classes'], q: 'Rank these UK reaction to fire classes, best first.', order: ['Non-combustible', 'Limited combustibility', 'Class 1', 'Class 3'] },
+    { u: 1, g: ['chain-phases'], q: 'Phase 1 of the chemical chain reaction is "materials decompose when heated". Place the next four phases in order.', order: ['Volatile gases are created', 'Volatiles burn', 'More heat is generated', 'Further decomposition occurs'], src: 'handout' },
   ]
 });

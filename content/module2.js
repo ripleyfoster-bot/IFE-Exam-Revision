@@ -210,7 +210,11 @@ window.IFE_MODULES.push({
     [7, 'Class 0 is not a fire ___ but the cumulative measure of two British Standards.', 'test', ['rating', 'class', 'product']],
     [7, 'Impregnation uses vacuum and ___ to force the solution into the timber.', 'pressure', ['heat', 'gravity', 'sunlight']],
     [7, 'Some chemical reactions are ___, meaning they cool the material down.', 'endothermic', ['exothermic', 'intumescent', 'ablative']],
-    [7, 'In the non-combustibility test the furnace is set at ___ °C.', '750', ['550', '1000', '275']]
+    [7, 'In the non-combustibility test the furnace is set at ___ °C.', '750', ['550', '1000', '275']],
+    /* v0.9.0: blank variants B7-B9 (review section 10d) */
+    [3, 'Cavity barriers are usually required to have ___ minutes integrity and fifteen minutes insulation.', 'thirty', ['fifteen', 'sixty', 'ten']],
+    [1, 'In the Section Factor A/V, A is the ___ of steel exposed to the fire per unit length.', 'surface area', ['volume', 'weight', 'thickness']],
+    [1, 'In the Section Factor A/V, V is the ___ of the section per unit length.', 'volume', ['surface area', 'weight', 'depth']],
   ],
 
   /* u = unit, title, pairs = [left, right] */
@@ -323,7 +327,11 @@ window.IFE_MODULES.push({
       ['Heat release', 'Energy generated during combustion'],
       ['Flaming droplets', 'Production of burning particles'],
       ['Spread of flame', 'Rate and distance flames travel across a surface']
-    ]}
+    ]},
+    /* v0.9.0: look-alike sets L1, L3, L4 (review section 10c) */
+    { u: 3, title: 'Fire-stopping: which heading?', pairs: [['Penetration seal', 'Seals around services passing through a fire separating element'], ['Linear joint seal', 'Seals the joint between two fire resisting elements'], ['Small cavity barrier', 'Closes a cavity at a junction, e.g. a floor meeting curtain walling'], ['Large cavity barrier', 'Subdivides a large void, e.g. a roof space'], ['Open state cavity barrier', 'Leaves a cavity open in the cold state and closes it in a fire']] },
+    { u: 3, title: 'EN 1366 parts', pairs: [['Part 1', 'Ventilation ducts'], ['Part 2', 'Fire dampers'], ['Part 5', 'Service ducts and shafts'], ['Part 8', 'Smoke extraction ducts'], ['Part 9', 'Single compartment smoke extraction ducts'], ['Part 10', 'Smoke control dampers']] },
+    { u: 1, title: 'Steel protection: which system?', pairs: [['Thin film intumescent', 'Char up to 50 times the coat thickness; cellulosic fire'], ['Thick film intumescent', 'Char about 5 times the coat thickness; hydrocarbon fire'], ['Higher density spray', 'Spray or trowel applied, 675-800 kg/m³'], ['Medium density spray', 'Spray applied, 200-400 kg/m³'], ['Low density "dry" spray', 'Spray applied, 120-200 kg/m³']] },
   ],
 
   /* svg is drawn in a 340 x 220 box. marks = numbered pins with their labels. */
@@ -629,6 +637,12 @@ window.IFE_MODULES.push({
     { u: 7, g: ['lower-index'], q: 'What does a lower Fire Propagation Index indicate?', o: ['Better resistance of the material to fire growth', 'Worse resistance to fire growth', 'A thicker coating', 'A longer fire resistance period'], a: [0] },
     { u: 7, g: ['bs-en-equiv'], q: 'How do BS EN reaction to fire test results relate to the old BS test results?', o: ['The tests are different and the results cannot be said to be equivalent', 'They are directly equivalent', 'BS results are always one class higher', 'BS EN results apply only outside the UK'], a: [0] },
     { u: 7, g: ['substrate'], q: 'The performance awarded in a spread of flame test is a function of:', o: ['The flame-retardant coating AND the background to which it is applied', 'The coating alone', 'The number of coats only', 'The brand of brush used'], a: [0] },
-    { u: 7, g: ['rtf-props'], q: 'Which reaction-to-fire characteristic describes the "production of burning particles"?', o: ['Flaming droplets', 'Ignitability', 'Smoke development', 'Heat release'], a: [0] }
+    { u: 7, g: ['rtf-props'], q: 'Which reaction-to-fire characteristic describes the "production of burning particles"?', o: ['Flaming droplets', 'Ignitability', 'Smoke development', 'Heat release'], a: [0] },
+    /* v0.9.0: order questions O7-O9, O11, O12 (review section 10b) */
+    { u: 3, g: ['open-state'], q: 'Place the stages of an open state cavity barrier in a fire in order.', order: ['Open in the cold state for ventilation and drainage', 'Fire heats the reactive (intumescent) component', 'The barrier closes and separates the cavity'] },
+    { u: 5, g: ['door-release'], q: 'A held-open fire door: place these events in order.', order: ['Fire alarm activates or the power fails', 'Electro-magnet coil is de-energised', 'Door closer closes the door'] },
+    { u: 5, g: ['shutter-release'], q: 'A fire shutter held open: place these events in order.', order: ['Fusible link or remote detection system operates', 'Automatic self-closing device releases', 'Shutter makes a controlled descent'] },
+    { u: 1, g: ['intumescent-steps'], q: 'Place the stages of a thin film intumescent coating reacting in order.', order: ['Acid generator creates a mild acid (around 200°C)', 'Acid combines with a blowing agent to form a gas', 'Coating swells into an insulating char', 'Carbonific burns until the coating is consumed'] },
+    { u: 1, g: ['spray-density'], q: 'Rank these mineral spray systems by density, highest first.', order: ['Higher density spray or trowel', 'Medium density spray', 'Low density "dry" spray'] },
   ]
 });

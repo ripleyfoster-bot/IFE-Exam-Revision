@@ -27,8 +27,8 @@ window.IFE_REVISION = {
     ['diagram', 'Diagram', 'Identify the labelled parts of a diagram.']
   ],
   /* How many of each format on a daily paper (20) and on the Day 7 full mock (40). */
-  paperMix: { mc: 4, mr: 4, type: 2, match: 2, select: 2, seq: 1, rank: 1, num: 2, diagram: 2 },
-  mockMix: { mc: 9, mr: 9, type: 4, match: 3, select: 3, seq: 2, rank: 3, num: 4, diagram: 3 },
+  paperMix: { mc: 3, mr: 3, type: 2, match: 2, select: 2, seq: 2, rank: 2, num: 2, diagram: 2 },
+  mockMix: { mc: 7, mr: 7, type: 3, match: 3, select: 3, seq: 4, rank: 6, num: 4, diagram: 3 },
 
   /* units: [module id, unit index] */
   days: [
