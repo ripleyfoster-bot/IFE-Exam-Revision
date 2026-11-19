@@ -496,7 +496,7 @@
     var r = rvState(), now = rvDayNow();
     var rows = RV.days.map(function (d) {
       var open = dayOpen(d.n), rec = r.days[d.n], st;
-      if (!open) { var wait = d.n - now; st = 'Unlocks ' + (wait <= 1 ? 'tomorrow' : 'in ' + wait + ' days'); }
+      if (!open) { var wait = d.n - now; st = !r.start ? 'Unlocks ' + (d.n === 2 ? 'the day after you start' : (d.n - 1) + ' days after you start') : 'Unlocks ' + (wait <= 1 ? 'tomorrow' : 'in ' + wait + ' days'); }
       else st = rec ? 'Best ' + pct(rec.best) + ' · ' + rec.tries + ' attempt' + (rec.tries > 1 ? 's' : '') : (d.n === now || (!r.start && d.n === 1) ? 'Today' : 'Ready');
       var topics = d.units.map(function (p) { var m = MODS.filter(function (x) { return x.id === p[0]; })[0]; return m ? 'M' + ({ One: 1, Two: 2, Three: 3 }[m.title.split(' ')[1]] || '') + ' ' + m.units[p[1]].split(':')[0] : ''; }).join(' · ');
       return h('button', { class: 'modcard day' + (open ? '' : ' off') + (rec && rec.best >= CFG.passMark ? ' done' : ''), type: 'button', disabled: !open, onclick: function () { rvStart(d, false); } },
