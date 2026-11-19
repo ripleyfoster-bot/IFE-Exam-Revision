@@ -169,3 +169,7 @@ html::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-even
 /* iOS Safari gives date inputs an intrinsic width; keep it inside its card */
 .fin[type="date"] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; box-sizing: border-box; text-align: left; }
 .fin[type="date"]::-webkit-date-and-time-value { text-align: left; }
+
+/* larger text and panel on laptop and desktop screens (v0.7.0); phones unchanged */
+@media (min-width: 1100px) { #app { zoom: 1.2; } }
+@media (min-width: 1600px) { #app { zoom: 1.35; } }
