@@ -507,7 +507,7 @@
       o.head(c, body);
       xRender(c, body, a.st, refresh);
       add(body, [h('div', { class: 'qnav' }, back, fl, btn(last ? 'Check answers' : 'Next ›', 'primary', function () { go(i + 1); })),
-        h('p', { class: 'hint gap' }, 'Tap a number to jump to that question.'), map,
+        h('p', { class: 'hint gap' }, 'Tap a number to jump to that question. Green means answered, not marked: nothing is marked until you submit.'), map,
         last ? null : h('button', { class: 'link center', type: 'button', onclick: review }, 'Check answers and submit')]);
     }
     function review() {
@@ -544,7 +544,7 @@
         var s = c.m.matches[c.set], all = s.pairs.map(function (p, j) { return { id: c.id + '.' + j, l: p[0], r: p[1] }; });
         st.rows = pick(all, Math.min(4, all.length));
         var spare = shuffle(all.filter(function (x) { return st.rows.indexOf(x) < 0; })).slice(0, 1); // one extra answer that matches nothing
-        st.opts = shuffle(st.rows.concat(spare).map(function (x) { return x.r; })); st.q = s.title + ': choose the correct match for each item.';
+        st.opts = shuffle(st.rows.concat(spare).map(function (x) { return x.r; })); st.q = s.title; st.once = true;
       } else {
         st.rows = shuffle(c.rows).slice(0, 5).map(function (x) { return { id: c.id, l: x[0], r: c.cats[x[1]] }; });
         st.opts = c.cats.slice(); st.q = c.q;
@@ -641,9 +641,32 @@
       return;
     }
     if (f === 'match') {
-      add(body, [h('div', { class: 'card-q small' }, st.q), h('div', { class: 'mlist' }, st.rows.map(function (x, k) {
-        return h('label', { class: 'mrow' }, h('span', null, x.l), xSelect(st.opts, st.vals[k], x.l, function (v) { st.vals[k] = v; ch(); }));
-      }))]);
+      // v0.9.1: laid out like the mock exam. Answers are listed once with letters;
+      // each item gets letter buttons. In pairs sets each answer is used once.
+      var L = 'ABCDEFGH', spare = st.opts.length - st.rows.length;
+      var how = st.once
+        ? 'Match each item to its answer from the list. Use each answer once.' + (spare === 1 ? ' One answer is spare.' : spare > 1 ? ' ' + spare + ' answers are spare.' : '')
+        : 'Choose the right group for each statement. A letter can be used more than once.';
+      var alist = h('ol', { class: 'alist' }, st.opts.map(function (o, q) { return h('li', null, h('b', null, L[q]), h('span', null, o)); }));
+      var rows = h('div', { class: 'mlist' });
+      var mdraw = function () {
+        rows.innerHTML = '';
+        st.rows.forEach(function (x, k) {
+          var cur = st.vals[k], ci = st.opts.indexOf(cur);
+          rows.appendChild(h('div', { class: 'mrow lrow' }, h('span', null, x.l),
+            h('div', { class: 'lets', role: 'group', 'aria-label': 'Answer for ' + x.l }, st.opts.map(function (o, q) {
+              var on = cur === o, used = st.once && !on && st.vals.indexOf(o) >= 0;
+              return h('button', { class: 'let' + (on ? ' on' : '') + (used ? ' used' : ''), type: 'button', 'aria-pressed': on ? 'true' : 'false', 'aria-label': L[q] + ': ' + o, onclick: function () {
+                if (on) st.vals[k] = '';
+                else { if (st.once) st.vals.forEach(function (v, z) { if (v === o) st.vals[z] = ''; }); st.vals[k] = o; }
+                mdraw(); ch();
+              } }, L[q]);
+            })),
+            h('small', { class: 'lpick' }, ci >= 0 ? L[ci] + ' · ' + cur : 'Not answered yet')));
+        });
+      };
+      add(body, [h('div', { class: 'card-q small' }, st.q), h('p', { class: 'hint' }, how), h('div', { class: 'mx' }, alist, rows)]);
+      mdraw();
       return;
     }
     if (f === 'diagram') {

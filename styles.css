@@ -208,3 +208,18 @@ html::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-even
   #app:has(.dgrid) { max-width: 1080px; }
   .dgrid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
 }
+
+/* v0.9.1: matching laid out like the mock exam. Lettered answer list, letter buttons per item. */
+.alist { list-style: none; margin: 0 0 12px; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 8px; }
+.alist li { display: flex; gap: 10px; align-items: baseline; }
+.alist b { flex: none; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--ink); color: var(--bg); font-size: .85rem; }
+.lrow .lets { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
+.let { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--card); font-weight: 700; padding: 0; }
+.let.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.let.used { opacity: .4; }
+.lpick { display: block; color: var(--mute); }
+@media (min-width: 900px) {
+  #app:has(.mx) { max-width: 1080px; }
+  .mx { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; align-items: start; }
+  .mx .alist { order: 2; margin: 0; position: sticky; top: 90px; }
+}
