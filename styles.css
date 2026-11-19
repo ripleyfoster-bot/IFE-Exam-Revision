@@ -166,3 +166,6 @@ html::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-even
   #app { max-width: 760px; margin-top: 24px; margin-bottom: 24px; padding: 8px 28px 40px; border-radius: 22px;
     background: color-mix(in srgb, var(--bg) 86%, transparent); border: 1px solid var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 }
+/* iOS Safari gives date inputs an intrinsic width; keep it inside its card */
+.fin[type="date"] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; box-sizing: border-box; text-align: left; }
+.fin[type="date"]::-webkit-date-and-time-value { text-align: left; }
