@@ -286,7 +286,19 @@ window.IFE_MODULES.push({
            '<path d="M70 196 C52 170 76 160 72 136 C92 156 98 140 94 120 C122 150 120 178 106 196 Z" class="flame"/>' +
            '<rect x="150" y="104" width="38" height="8" class="pipe"/><path d="M118 108 L146 108 M138 102 L146 108 L138 114" class="lead"/>' +
            '<rect x="196" y="150" width="6" height="30" rx="3" class="shape"/><circle cx="199" cy="184" r="6" class="dot"/><text x="212" y="172" class="tx">°C</text>',
-      marks: [ {x: 180, y: 20, l: 'Loadbearing capacity'}, {x: 128, y: 88, l: 'Integrity'}, {x: 238, y: 150, l: 'Insulation'}, {x: 46, y: 120, l: 'Fire-exposed side'} ] }
+      marks: [ {x: 180, y: 20, l: 'Loadbearing capacity'}, {x: 128, y: 88, l: 'Integrity'}, {x: 238, y: 150, l: 'Insulation'}, {x: 46, y: 120, l: 'Fire-exposed side'} ] },
+    { u: 3, title: 'Active and passive measures in a building',
+      hint: 'A two-storey section. Label each fire protection measure; the label says whether it is active or passive.',
+      svg: '<rect x="20" y="30" width="300" height="8" class="solid"/><rect x="20" y="108" width="300" height="10" class="solid"/>' +
+           '<line x1="20" y1="30" x2="20" y2="200" class="shape"/><line x1="320" y1="30" x2="320" y2="200" class="shape"/><line x1="10" y1="200" x2="330" y2="200" class="ax"/>' +
+           '<path d="M96 38 A14 10 0 0 0 124 38 Z" class="hatch"/>' +
+           '<rect x="166" y="38" width="8" height="24" class="solid"/><rect x="163" y="62" width="14" height="46" class="hatch"/><circle cx="173" cy="86" r="2" class="dot"/>' +
+           '<rect x="54" y="118" width="22" height="82" class="hatch"/><rect x="61" y="118" width="8" height="82" class="pipe"/>' +
+           '<rect x="198" y="118" width="4" height="9" class="pipe"/><line x1="190" y1="128" x2="210" y2="128" class="shape"/><path d="M196 132 L180 160 M200 132 L200 164 M204 132 L220 160" class="path"/>' +
+           '<rect x="258" y="104" width="24" height="18" class="hatch"/><rect x="266" y="44" width="8" height="156" class="pipe"/>' +
+           '<path d="M120 200 C104 180 124 172 120 154 C136 170 142 158 140 144 C160 166 158 186 148 200 Z" class="flame"/>',
+      marks: [ {x: 76, y: 56, l: 'Smoke detector: active'}, {x: 143, y: 84, l: 'Fire door: passive'}, {x: 110, y: 113, l: 'Compartment floor: passive'},
+        {x: 96, y: 168, l: 'Board protection to a steel column: passive'}, {x: 228, y: 146, l: 'Sprinkler head: active'}, {x: 296, y: 113, l: 'Penetration seal around a pipe: passive'} ] }
   ],
 
   /* o = options, a = indexes of correct options (more than one = "select all that apply").
