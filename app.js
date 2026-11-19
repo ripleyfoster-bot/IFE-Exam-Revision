@@ -129,7 +129,7 @@
     var chips = h('div', { class: 'chips' },
       [h('button', { class: 'chip' + (unitFilter < 0 ? ' on' : ''), type: 'button', onclick: function () { unitFilter = -1; modScreen(m); } }, 'All units')]
         .concat(units.map(function (x) {
-          return h('button', { class: 'chip' + (unitFilter === x.u ? ' on' : ''), type: 'button', onclick: function () { unitFilter = x.u; modScreen(m); } }, x.u === 0 ? 'Intro' : 'Unit ' + x.u);
+          return h('button', { class: 'chip' + (unitFilter === x.u ? ' on' : ''), type: 'button', onclick: function () { unitFilter = x.u; modScreen(m); } }, m.noIntro ? 'Unit ' + (x.u + 1) : x.u === 0 ? 'Intro' : 'Unit ' + x.u);
         })));
 
     var rows = units.map(function (x) {

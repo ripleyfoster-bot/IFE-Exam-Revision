@@ -1,6 +1,6 @@
 # IFE Level 3 Revision (PWA)
 
-Adaptive revision app. Version 0.2.0 contains Module One and Module Two. No AI and no sign-in in this version.
+Adaptive revision app. Version 0.3.0 contains Modules One, Two and Three. No AI and no sign-in in this version.
 
 ## Files
 
@@ -12,6 +12,7 @@ Adaptive revision app. Version 0.2.0 contains Module One and Module Two. No AI a
 | `config.js` | Pass mark, exam length, AI tutor switch (off) |
 | `content/module1.js` | All Module One content |
 | `content/module2.js` | All Module Two content |
+| `content/module3.js` | All Module Three content (no Introduction pack: `noIntro: true`) |
 | `sw.js` | Offline cache |
 | `manifest.webmanifest`, `icons/` | Install-to-home-screen details |
 
