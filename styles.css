@@ -144,3 +144,25 @@ h2.in { margin: 0 0 10px; }
 .copy { text-align: center; color: var(--mute); font-size: 0.82rem; margin: 10px 0 0; }
 .link.center { display: block; margin: 8px auto 0; }
 .gap { margin-top: 14px !important; }
+
+/* brand and background (v0.6.0) */
+html { min-height: 100%; }
+body { background: transparent; min-height: 100vh; }
+html::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(120% 60% at 50% 115%, rgba(226, 96, 43, .22), transparent 60%), url(bg.svg) center / cover no-repeat, var(--bg);
+  opacity: 1; }
+@media (max-width: 899px) {
+  html::before { background: radial-gradient(140% 50% at 50% 110%, rgba(226, 96, 43, .2), transparent 60%), var(--bg); }
+  html::after { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: url(bg.svg) center / cover no-repeat; opacity: .35; }
+}
+.top { background: transparent; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.top.home { gap: 12px; }
+.mark { display: inline-block; flex: none; border-radius: 24%; overflow: hidden; box-shadow: 0 6px 18px rgba(167, 51, 26, .35); }
+.mark svg { display: block; width: 100%; height: 100%; }
+.brand .mark { margin: 0 auto; }
+.brand h1 { letter-spacing: -0.01em; }
+.panel, .modcard, .tile, .fig, .card-q, .mrow { box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+@media (min-width: 900px) {
+  #app { max-width: 760px; margin-top: 24px; margin-bottom: 24px; padding: 8px 28px 40px; border-radius: 22px;
+    background: color-mix(in srgb, var(--bg) 86%, transparent); border: 1px solid var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+}

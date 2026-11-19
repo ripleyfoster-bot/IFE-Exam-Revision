@@ -106,7 +106,7 @@
         h('strong', null, RV.title), h('span', null, RV.subtitle + ': every module, in the IFE exam formats'),
         bar(rs.start ? Math.min(7, dn) / 7 : 0), h('small', null, rs.start ? (dn > 7 ? 'All 7 days open' : 'Day ' + dn + ' of 7') : 'Not started')));
     }
-    show(topbar('IFE Level 3 Revision', null, h('button', { class: 'link', type: 'button', onclick: about }, 'About')),
+    show(h('header', { class: 'top home' }, logo(36), h('h1', null, 'IFE Level 3 Revision'), h('button', { class: 'link', type: 'button', onclick: about }, 'About')),
       h('p', { class: 'lead' }, 'Pick a module. The app tracks what you know and steers practice to your weak spots.'), list);
   }
 
@@ -124,6 +124,17 @@
         // keeps the user's details and agreement; erases learning progress only
         if (window.confirm('Erase all progress on this device?')) { S = { v: 1, items: {}, exams: {}, user: S.user }; save(); home(); }
       }));
+  }
+
+  /* ---------- brand mark: the app icon's flame, contained by a ring (the compartment) ---------- */
+  function logo(size) {
+    return h('span', { class: 'mark', style: 'width:' + size + 'px;height:' + size + 'px', html:
+      '<svg viewBox="0 0 512 512" role="img" aria-label="IFE Level 3 Revision">' +
+      '<defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2602b"/><stop offset="1" stop-color="#a7331a"/></linearGradient></defs>' +
+      '<rect width="512" height="512" rx="116" fill="url(#lg)"/>' +
+      '<circle cx="256" cy="262" r="178" fill="none" stroke="#fdf3e9" stroke-opacity=".9" stroke-width="14"/>' +
+      '<g transform="translate(256 262) scale(.68) translate(-256 -255)"><path fill="#fdf3e9" fill-rule="evenodd" d="M256 92 L360 243 L344 325 A88 88 0 0 1 168 325 L152 243 Z M256 234 L302 318 L256 390 L210 318 Z"/></g>' +
+      '</svg>' });
   }
 
   /* ---------- opening screen ---------- */
@@ -156,7 +167,7 @@
     function check() { go.disabled = !(name.value.trim() && comp.value.trim() && tick.checked); }
     [name, comp, exam].forEach(function (x) { x.addEventListener('input', check); });
     tick.addEventListener('change', check);
-    show(editing ? topbar('My details', about) : h('div', { class: 'brand' }, h('div', { class: 'logo' }, 'IFE L3'), h('h1', null, 'IFE Level 3 Revision'), h('p', null, 'A revision companion for the ASFP Level 3 course')),
+    show(editing ? topbar('My details', about) : h('div', { class: 'brand' }, logo(88), h('h1', null, 'IFE Level 3 Revision'), h('p', null, 'A revision companion for the ASFP Level 3 course')),
       h('div', { class: 'panel' },
         h('label', { class: 'fl' }, 'Your name', name),
         h('label', { class: 'fl' }, 'Your company', comp),
@@ -171,7 +182,7 @@
     var u = S.user;
     if (!u || !u.agreed || !u.name) return welcome(false);
     var line = examLine(u.exam);
-    show(h('div', { class: 'brand cover' }, h('div', { class: 'logo' }, 'IFE L3'), h('h1', null, 'IFE Level 3 Revision'),
+    show(h('div', { class: 'brand cover' }, logo(88), h('h1', null, 'IFE Level 3 Revision'),
         h('p', { class: 'hi' }, 'Welcome back, ' + u.name), h('p', null, u.company),
         line ? h('div', { class: 'count' }, line) : null),
       btn('Continue', 'primary', home),
