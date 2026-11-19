@@ -1,5 +1,5 @@
 /* Offline cache. Change CACHE whenever any file changes, or phones keep the old copy. */
-var CACHE = 'ife3-v0.9.1';
+var CACHE = 'ife3-v0.9.2';
 var FILES = ['./', 'index.html', 'styles.css', 'config.js', 'app.js', 'content/module1.js', 'content/module2.js', 'content/module3.js', 'content/revision.js',
   'manifest.webmanifest', 'bg.svg', 'icons/icon-180-v2.png', 'icons/icon-192-v2.png', 'icons/icon-512-v2.png'];
 

@@ -209,7 +209,7 @@ html::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-even
   .dgrid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
 }
 
-/* v0.9.1: matching laid out like the mock exam. Lettered answer list, letter buttons per item. */
+/* v0.9.2: matching laid out like the mock exam. Lettered answer list, letter buttons per item. */
 .alist { list-style: none; margin: 0 0 12px; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 8px; }
 .alist li { display: flex; gap: 10px; align-items: baseline; }
 .alist b { flex: none; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--ink); color: var(--bg); font-size: .85rem; }

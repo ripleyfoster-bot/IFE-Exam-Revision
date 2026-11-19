@@ -641,7 +641,7 @@
       return;
     }
     if (f === 'match') {
-      // v0.9.1: laid out like the mock exam. Answers are listed once with letters;
+      // v0.9.2: laid out like the mock exam. Answers are listed once with letters;
       // each item gets letter buttons. In pairs sets each answer is used once.
       var L = 'ABCDEFGH', spare = st.opts.length - st.rows.length;
       var how = st.once
