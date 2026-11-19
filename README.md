@@ -1,6 +1,6 @@
 # IFE Level 3 Revision (PWA)
 
-Adaptive revision app. Version 0.1.3 contains Module One only. No AI and no sign-in in this version.
+Adaptive revision app. Version 0.2.0 contains Module One and Module Two. No AI and no sign-in in this version.
 
 ## Files
 
@@ -11,6 +11,7 @@ Adaptive revision app. Version 0.1.3 contains Module One only. No AI and no sign
 | `styles.css` | Look and feel (light and dark) |
 | `config.js` | Pass mark, exam length, AI tutor switch (off) |
 | `content/module1.js` | All Module One content |
+| `content/module2.js` | All Module Two content |
 | `sw.js` | Offline cache |
 | `manifest.webmanifest`, `icons/` | Install-to-home-screen details |
 
@@ -20,7 +21,7 @@ Adaptive revision app. Version 0.1.3 contains Module One only. No AI and no sign
 2. In the repository: Settings, Pages, deploy from the `main` branch, root folder.
 3. Open the address GitHub gives you on your iPhone in Safari, then Share, Add to Home Screen.
 
-A GitHub Pages address is public to anyone who has the link. The course content sits in `content/module1.js` in plain text. Do not share the link beyond people entitled to the course material until an access gate is in place.
+A GitHub Pages address is public to anyone who has the link. The course content sits in the `content/` files in plain text. Do not share the link beyond people entitled to the course material until an access gate is in place.
 
 ## Updating
 
