@@ -125,3 +125,22 @@ h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color
 .mrow { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
 .mrow span { display: block; font-weight: 600; }
 .pin.still { display: flex; align-items: center; justify-content: center; pointer-events: none; }
+
+/* opening screen */
+.brand { text-align: center; padding: 36px 0 18px; }
+.brand h1 { font-size: 1.5rem; margin: 10px 0 4px; }
+.brand p { color: var(--mute); margin: 2px 0; }
+.brand .hi { color: var(--ink); font-size: 1.15rem; font-weight: 600; margin-top: 14px; }
+.brand.cover { padding-top: 70px; }
+.logo { display: inline-flex; align-items: center; justify-content: center; width: 72px; height: 72px; border-radius: 18px; background: var(--accent); color: var(--accent-ink); font-weight: 800; }
+.count { display: inline-block; margin-top: 18px; padding: 10px 16px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); font-weight: 600; }
+.fl { display: block; font-weight: 600; margin-bottom: 14px; } .fl small { display: block; font-weight: 400; color: var(--mute); margin-top: 4px; }
+.fin { display: block; width: 100%; margin-top: 6px; font: inherit; font-size: 16px; padding: 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); min-height: 48px; }
+.fin:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.notice { padding-left: 20px; margin: 0 0 12px; } .notice li { margin-bottom: 8px; } .notice a { color: var(--accent); }
+.agree { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 12px; background: var(--bg); border: 1.5px solid var(--accent); font-weight: 600; }
+.agree input { width: 24px; height: 24px; flex: none; margin: 2px 0 0; accent-color: var(--accent); }
+h2.in { margin: 0 0 10px; }
+.copy { text-align: center; color: var(--mute); font-size: 0.82rem; margin: 10px 0 0; }
+.link.center { display: block; margin: 8px auto 0; }
+.gap { margin-top: 14px !important; }

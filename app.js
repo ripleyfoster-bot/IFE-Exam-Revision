@@ -111,14 +111,73 @@
   }
 
   function about() {
+    var u = S.user || {};
     show(topbar('About', home),
       h('div', { class: 'panel' },
-        h('p', null, 'Version ' + CFG.version + '. Progress is stored on this device only.'),
-        h('p', null, 'AI tutor: ' + (AI.on ? 'on' : 'off in this version') + '.'),
-        h('p', null, 'Content is drawn from the course resource packs. Always check the official course material if anything looks wrong.')),
+        u.name ? h('p', null, h('b', null, u.name), u.company ? ', ' + u.company : '', u.exam ? ' · exam ' + u.exam.split('-').reverse().join('/') : '') : null,
+        btn('Change my details', '', function () { welcome(true); }),
+        h('p', { class: 'gap' }, 'Version ' + CFG.version + '. Your details and progress are stored on this device only.'),
+        h('p', null, 'AI tutor: ' + (AI.on ? 'on' : 'off in this version') + '.')),
+      h('div', { class: 'panel' }, h('h2', { class: 'in' }, 'Course material and disclaimer'), notices()),
+      h('p', { class: 'copy' }, COPY),
       btn('Reset all progress', 'bad', function () {
-        if (window.confirm('Erase all progress on this device?')) { S = { v: 1, items: {}, exams: {} }; save(); home(); }
+        // keeps the user's details and agreement; erases learning progress only
+        if (window.confirm('Erase all progress on this device?')) { S = { v: 1, items: {}, exams: {}, user: S.user }; save(); home(); }
       }));
+  }
+
+  /* ---------- opening screen ---------- */
+  var COPY = '\u00a9 2026 Ripley Foster, XRF Systems. All rights reserved.';
+  function notices() {
+    return h('ul', { class: 'notice' },
+      h('li', null, 'The course material is owned by the ASFP (Association for Specialist Fire Protection), ', h('a', { href: 'https://www.asfp.org.uk', target: '_blank', rel: 'noopener' }, 'www.asfp.org.uk'), '.'),
+      h('li', null, 'All content in this app is based on the ASFP Level 3 course workbooks.'),
+      h('li', null, 'It may contain errors or omissions. Always check against the official course material.'),
+      h('li', null, 'Ripley Foster and XRF Systems accept no responsibility for any errors or omissions, or for any use made of this content.'));
+  }
+  function daysTo(key) { return key ? -daysSince(key) : null; }
+  function examLine(key) {
+    var n = daysTo(key);
+    if (n === null) return null;
+    return n > 1 ? n + ' days to your exam' : n === 1 ? 'Your exam is tomorrow' : n === 0 ? 'Your exam is today. Good luck.' : 'Your exam date has passed';
+  }
+  // First launch (or "Change my details"): name, company, optional exam date and the agreement.
+  function welcome(editing) {
+    var u = S.user || {};
+    var name = h('input', { class: 'fin', type: 'text', autocomplete: 'name', value: u.name || '', 'aria-label': 'Your name' });
+    var comp = h('input', { class: 'fin', type: 'text', autocomplete: 'organization', value: u.company || '', 'aria-label': 'Your company' });
+    var exam = h('input', { class: 'fin', type: 'date', value: u.exam || '', 'aria-label': 'Exam date (optional)' });
+    var tick = h('input', { type: 'checkbox', id: 'agree' });
+    if (u.agreed) tick.checked = true;
+    var go = btn(editing ? 'Save' : 'Agree and continue', 'primary', function () {
+      S.user = { name: name.value.trim(), company: comp.value.trim(), exam: exam.value || '', agreed: u.agreed || new Date().toISOString() };
+      save(); home();
+    });
+    function check() { go.disabled = !(name.value.trim() && comp.value.trim() && tick.checked); }
+    [name, comp, exam].forEach(function (x) { x.addEventListener('input', check); });
+    tick.addEventListener('change', check);
+    show(editing ? topbar('My details', about) : h('div', { class: 'brand' }, h('div', { class: 'logo' }, 'IFE L3'), h('h1', null, 'IFE Level 3 Revision'), h('p', null, 'A revision companion for the ASFP Level 3 course')),
+      h('div', { class: 'panel' },
+        h('label', { class: 'fl' }, 'Your name', name),
+        h('label', { class: 'fl' }, 'Your company', comp),
+        h('label', { class: 'fl' }, 'Exam date (optional)', exam, h('small', null, 'Shows a countdown each time you open the app.'))),
+      h('div', { class: 'panel' }, h('h2', { class: 'in' }, 'Before you start'), notices(),
+        h('label', { class: 'agree', for: 'agree' }, tick, h('span', null, 'I confirm I received the course material directly from the ASFP. I will not use or share this information without the ASFP\'s permission, and I accept the points above.'))),
+      go, h('p', { class: 'copy' }, 'Your details are stored on this device only.'), h('p', { class: 'copy' }, COPY));
+    check();
+  }
+  // Later launches: a short cover with name, countdown and copyright.
+  function cover() {
+    var u = S.user;
+    if (!u || !u.agreed || !u.name) return welcome(false);
+    var line = examLine(u.exam);
+    show(h('div', { class: 'brand cover' }, h('div', { class: 'logo' }, 'IFE L3'), h('h1', null, 'IFE Level 3 Revision'),
+        h('p', { class: 'hi' }, 'Welcome back, ' + u.name), h('p', null, u.company),
+        line ? h('div', { class: 'count' }, line) : null),
+      btn('Continue', 'primary', home),
+      h('button', { class: 'link center', type: 'button', onclick: function () { welcome(true); } }, 'Change my details'),
+      h('p', { class: 'copy' }, 'Course material owned by the ASFP, www.asfp.org.uk. Always check the official course material.'),
+      h('p', { class: 'copy' }, COPY));
   }
 
   /* ---------- module screen ---------- */
@@ -645,5 +704,5 @@
   if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
     window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
   }
-  if (MODS.length) home(); else show(h('p', { class: 'lead' }, 'No module content found.'));
+  if (MODS.length) cover(); else show(h('p', { class: 'lead' }, 'No module content found.'));
 })();
