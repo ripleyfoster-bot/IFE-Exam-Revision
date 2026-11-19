@@ -334,8 +334,8 @@ window.IFE_MODULES.push({
     { u: 0, g: ['nos-door'], q: 'Under the National Occupational Standard for timber fire door installation, the installer is expected to:', o: ['Be aware of how the door will function in a fire, including any automatic closure', 'Design the fire alarm system', 'Service the smoke detectors', 'Set the alarm sound level'], a: [0] },
 
     { u: 1, g: ['portable'], q: 'Which of the following are examples of portable firefighting equipment?', o: ['Water extinguisher', 'CO₂ extinguisher', 'Foam extinguisher', 'Fire blanket', 'Dry riser'], a: [0, 1, 2, 3] },
-    { u: 1, g: ['foam'], q: 'Which characteristic is MOST associated with a foam fire extinguisher?', o: ['Cooling and smothering effects', 'Structural fire protection', 'Creation of a fire-resistant coating', 'Smoke extraction'], a: [0] },
-    { u: 1, g: ['cooling-order'], q: 'Rank these extinguishing media in order of cooling effectiveness, from highest to lowest.', order: ['Water', 'Foam', 'CO₂', 'Dry Powder'] },
+    { u: 1, g: ['foam'], q: 'Which characteristic is MOST associated with a foam fire extinguisher?', o: ['Cooling and smothering effects', 'Structural fire protection', 'Creation of a fire-resistant coating', 'Smoke extraction'], a: [0], x: 'The pack describes foam as smothering (denying oxygen); the mock exam adds a cooling effect.' },
+    { u: 1, g: ['cooling-order'], q: 'Rank these extinguishing media in order of cooling effectiveness, from highest to lowest.', order: ['Water', 'Foam', 'CO₂', 'Dry Powder'], src: 'mock' },
     { u: 1, g: ['ext-limit'], q: 'A portable fire extinguisher is NOT intended for use on:', o: ['An out-of-control fire, such as one which has reached the ceiling', 'A small fire in its early stages', 'A waste bin fire', 'A fire it is rated for'], a: [0] },
     { u: 1, g: ['godfrey'], q: 'When was the first recorded fire extinguisher patented in England?', o: ['1723', '1812', '1872', '1996'], a: [0] },
     { u: 1, g: ['ext-service'], q: 'How often should extinguishers in commercial or public buildings be serviced to BS 5306-3?', o: ['Once a year', 'Once a month', 'Every five years', 'Every ten years'], a: [0] },

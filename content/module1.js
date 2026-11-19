@@ -53,7 +53,7 @@ window.IFE_MODULES.push({
     [1, 'What is hydrogen cyanide, in a fire context?', 'A toxic gas generated from burning plastics. It can interfere with cellular respiration.'],
     [1, 'What are "volatiles"?', 'Substances capable of readily changing from a solid or liquid form to a vapour.'],
     [1, 'Why are smouldering fires particularly dangerous?', 'They grow slowly and give little heat but can produce very toxic smoke, and may suddenly become flaming fires. Especially dangerous where people may be asleep, e.g. a hotel.'],
-    [1, 'How do water, foam and inert gas each tackle a fire?', 'Water lowers the fuel temperature below ignition point (or disperses the fuel). Foam denies the fire oxygen. Inert gas attacks the chemical reaction.'],
+    [1, 'How do water, foam and inert gas each tackle a fire?', 'Water lowers the fuel temperature below ignition point (or disperses the fuel). Foam denies the fire oxygen. Inert gas attacks the chemical reaction. The pack describes foam as smothering (denying oxygen); the mock exam adds a cooling effect.'],
     [1, 'What does MMC stand for, and why does it matter?', 'Modern Methods of Construction. Such structures may challenge standard fire test methodology, which is founded on bricks and mortar construction.'],
 
     [2, 'Name four factors that affect how people respond to a potential fire.', 'Any of: knowledge of the layout, regularity of false alarms, fire drill discipline, physical state (asleep, alcohol, drugs), impairment, family or friends scattered in the building, what the senses detect, the reaction of others (the "herd" mindset), clarity of exit signage.'],
@@ -421,7 +421,7 @@ window.IFE_MODULES.push({
     { u: 1, q: 'Apart from smoke, in which ways can fire debilitate or kill?', o: ['Depleting oxygen levels', 'Superheated gases burning the respiratory tract', 'Lowering air pressure', 'Raising humidity'], a: [0, 1] },
     { u: 1, q: 'What does MMC stand for?', o: ['Modern Methods of Construction', 'Minimum Material Combustibility', 'Managed Means of Compartmentation', 'Mandatory Maintenance Certificate'], a: [0] },
     { u: 1, q: 'Smouldering fires are described as particularly dangerous where:', o: ['People may be asleep, such as a hotel', 'The fire is in the open air', 'The building has a steel frame', 'Sprinklers are fitted'], a: [0] },
-    { u: 1, g: ['extinguish'], q: 'Foam mainly extinguishes a fire by:', o: ['Denying the fire the oxygen it needs', 'Lowering the fuel temperature below ignition point', 'Attacking the chemical reaction with inert gas', 'Increasing the fire load'], a: [0] },
+    { u: 1, g: ['extinguish'], q: 'Foam mainly extinguishes a fire by:', o: ['Denying the fire the oxygen it needs', 'Lowering the fuel temperature below ignition point', 'Attacking the chemical reaction with inert gas', 'Increasing the fire load'], a: [0], x: 'The pack describes foam as smothering (denying oxygen); the mock exam adds a cooling effect.' },
     { u: 1, q: 'Visible smoke from incompletely burned fuel is made up of:', o: ['Evaporated water, carbon dioxide and unburnt fuel particles', 'Oxygen and nitrogen only', 'Pure carbon monoxide', 'Steam only'], a: [0] },
 
     { u: 2, g: ['factors'], q: 'Which of these is NOT listed as a factor in how people respond to a potential fire?', o: ['The insured value of the building', 'Fire drill discipline', 'How regularly false alarms are heard', 'Clarity of fire exit signage'], a: [0] },

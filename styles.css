@@ -173,3 +173,15 @@ html::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-even
 /* larger text and panel on laptop and desktop screens (v0.7.0); phones unchanged */
 @media (min-width: 1100px) { #app { zoom: 1.2; } }
 @media (min-width: 1600px) { #app { zoom: 1.35; } }
+
+/* v0.8.0: flag and go back on exam-style papers */
+.qnav { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 8px; margin-top: 14px; }
+.qnav .btn { margin-top: 0; padding: 12px 8px; }
+.flagbtn.on { background: #fff3d6; border-color: #d99a00; color: #7a5200; }
+.qmap { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 6px; margin: 0 0 12px; }
+.qn { position: relative; min-height: 42px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); font-weight: 600; color: var(--mute); }
+.qn.done { background: var(--goodbg); border-color: var(--good); color: var(--good); }
+.qn.cur { box-shadow: 0 0 0 2px var(--accent); }
+.qn.flag::after { content: '⚑'; position: absolute; top: -7px; right: -4px; font-size: 0.8rem; color: #b37800; }
+.note { color: var(--ink); font-size: 0.9rem; margin: 8px 0 0; }
+.rev .note { color: var(--mute); }

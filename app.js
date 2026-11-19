@@ -60,7 +60,7 @@
     var it = [];
     m.cards.forEach(function (c, i) { it.push({ id: m.id + '.c' + i, type: 'card', u: c[0], q: c[1], a: c[2] }); });
     m.fills.forEach(function (f, i) { it.push({ id: m.id + '.f' + i, type: 'fill', u: f[0], text: f[1], a: f[2], d: f[3] }); });
-    m.questions.forEach(function (q, i) { it.push({ id: m.id + '.q' + i, type: 'q', u: q.u, q: q.q, o: q.o, a: q.a, order: q.order, g: q.g || [] }); });
+    m.questions.forEach(function (q, i) { it.push({ id: m.id + '.q' + i, type: 'q', u: q.u, q: q.q, o: q.o, a: q.a, order: q.order, g: q.g || [], x: q.x, src: q.src }); });
     m.matches.forEach(function (s, i) { s.pairs.forEach(function (p, j) { it.push({ id: m.id + '.p' + i + '.' + j, type: 'pair', u: s.u, set: i, k: j }); }); });
     m.diagrams.forEach(function (d, i) { d.marks.forEach(function (k, j) { it.push({ id: m.id + '.d' + i + '.' + j, type: 'mark', u: d.u, dg: i, k: j }); }); });
     m._items = it;
@@ -240,6 +240,7 @@
       var t = tasks[i], body = h('div', { class: 'task' });
       show(topbar(title, function () { modScreen(m); }, (i + 1) + ' / ' + tasks.length), bar(i / tasks.length, 'thin'), body);
       body.appendChild(h('div', { class: 'utag' }, m.units[t.u]));
+      if (t.src === 'mock') body.appendChild(h('div', { class: 'utag' }, MOCKTAG));
       var done = function (ok) { if (ok !== null) mark(t.id, ok); if (ok) right++; else missed.push(t); i++; next(); };
       if (t.type === 'card') renderCard(t, body, done);
       else if (t.type === 'fill') renderFill(m, t, body, done);
@@ -262,7 +263,7 @@
 
   /* ---------- task renderers ---------- */
   function feedback(m, ok, text, t) {
-    var box = h('div', { class: 'fb ' + (ok ? 'ok' : 'no') }, h('strong', null, ok ? 'Correct. ' : 'Not quite. '), text || '');
+    var box = h('div', { class: 'fb ' + (ok ? 'ok' : 'no') }, h('strong', null, ok ? 'Correct. ' : 'Not quite. '), text || '', t && t.x ? h('p', { class: 'note' }, t.x) : null);
     if (!ok && AI.on) {
       var out = h('p', { class: 'ai' });
       box.appendChild(btn('Explain this', 'link', function () {
@@ -435,16 +436,18 @@
     return shuffle(out);
   }
   function exam(m) {
-    var paper = examPaper(m), i = 0, res = [];
-    function next() {
-      if (i >= paper.length) return result();
-      var t = paper[i], body = h('div', { class: 'task' });
-      show(topbar('Final exam', function () { if (window.confirm('Leave the exam? This attempt will not be saved.')) modScreen(m); }, (i + 1) + ' / ' + paper.length), bar(i / paper.length, 'thin'), body);
-      renderQ(m, t, body, function (ok, given, picks) { res.push({ t: t, ok: ok, given: given, picks: picks }); i++; next(); }, true);
-    }
-    function result() {
+    var paper = examPaper(m).map(function (t) {
+      return { m: m, u: t.u, id: t.id, fmt: t.order ? 'seq' : t.a.length > 1 ? 'mr' : 'mc', q: t.q, o: t.o, a: t.a, order: t.order, x: t.x, src: t.src };
+    });
+    paperRun({
+      title: 'Final exam', paper: paper,
+      leave: function () { if (window.confirm('Leave the exam? This attempt will not be saved.')) modScreen(m); },
+      head: function (c, body) { if (c.src === 'mock') body.appendChild(h('div', { class: 'utag' }, MOCKTAG)); },
+      finish: result
+    });
+    function result(res) {
       var score = 0, byU = {};
-      res.forEach(function (r) { mark(r.t.id, r.ok); if (r.ok) score++; var b = byU[r.t.u] = byU[r.t.u] || { s: 0, n: 0 }; b.n++; if (r.ok) b.s++; });
+      res.forEach(function (r) { mark(r.c.id, r.ok); if (r.ok) score++; var b = byU[r.c.u] = byU[r.c.u] || { s: 0, n: 0 }; b.n++; if (r.ok) b.s++; });
       (S.exams[m.id] = S.exams[m.id] || []).push({ d: Date.now(), s: score, n: paper.length }); save();
       var need = Math.ceil(CFG.passMark * paper.length), pass = score >= need;
       var wrong = res.filter(function (r) { return !r.ok; });
@@ -455,9 +458,9 @@
         Object.keys(byU).map(function (u) { var b = byU[u], f = b.s / b.n; return h('div', { class: 'urow' }, h('div', { class: 'uname' }, m.units[u], h('b', null, b.s + ' / ' + b.n)), bar(f, f >= CFG.passMark ? 'good' : f < 0.5 ? 'weak' : '')); }),
         wrong.length ? h('h2', null, 'Review (' + wrong.length + ')') : null,
         wrong.map(function (r) {
-          var t = r.t, detail;
+          var t = r.c, detail;
           if (t.order) {
-            detail = [h('p', { class: 'no' }, 'Your order: ' + (r.given || 'no answer')), h('p', { class: 'ok' }, 'Correct order: ' + t.order.join(' → '))];
+            detail = [h('p', { class: 'no' }, 'Your order: ' + r.given), h('p', { class: 'ok' }, 'Correct order: ' + t.order.join(' → '))];
           } else {
             // one line per option that matters: right pick, wrong pick, or missed
             var picks = r.picks || [], rows = [], one = t.a.length === 1;
@@ -467,13 +470,188 @@
               else if (!right && picked) rows.push(h('li', { class: 'no' }, h('b', null, '✗ '), text, h('em', null, one ? ' (your answer)' : ' (should not be selected)')));
               else if (right) rows.push(h('li', { class: 'miss' }, h('b', null, '+ '), text, h('em', null, one ? ' (correct answer)' : ' (missed)')));
             });
+            if (!picks.length) rows.unshift(h('li', { class: 'no' }, 'Not answered.'));
             detail = h('ul', { class: 'marks' }, rows);
           }
-          return h('div', { class: 'panel rev' }, h('p', { class: 'q' }, t.q), detail, h('small', null, m.units[t.u]));
+          return h('div', { class: 'panel rev' }, h('p', { class: 'q' }, t.q), detail, t.x ? h('p', { class: 'note' }, t.x) : null, h('small', null, m.units[t.u]));
         }),
         btn('Back to module', 'primary', function () { modScreen(m); }));
     }
-    next();
+  }
+
+  /* ---------- exam-style paper runner: flag, go back, check your answers, then submit ---------- */
+  // Used by the module final exams and every Revision paper. Answers are kept per question
+  // (st), so moving back and forward never loses them. Nothing is marked until Submit.
+  var MOCKTAG = 'From the mock exam only: no course pack gives this order';
+  function paperRun(o) {
+    var P = o.paper, A = P.map(function () { return { st: {}, flag: false }; }), i = 0;
+    function grid(cur) {
+      return h('div', { class: 'qmap' }, P.map(function (c, k) {
+        var done = xAnswered(c, A[k].st), fl = A[k].flag;
+        return h('button', { class: 'qn' + (k === cur ? ' cur' : '') + (done ? ' done' : '') + (fl ? ' flag' : ''), type: 'button',
+          'aria-label': 'Question ' + (k + 1) + (done ? ', answered' : ', not answered') + (fl ? ', flagged' : ''), onclick: function () { go(k); } }, String(k + 1));
+      }));
+    }
+    function go(k) { i = Math.max(0, k); if (i >= P.length) review(); else ask(); }
+    function ask() {
+      var c = P[i], a = A[i], body = h('div', { class: 'task' }), map = grid(i);
+      function refresh() { var g = grid(i); map.parentNode.replaceChild(g, map); map = g; }
+      var fl = h('button', { class: 'btn flagbtn' + (a.flag ? ' on' : ''), type: 'button', 'aria-pressed': a.flag ? 'true' : 'false', onclick: function () {
+        a.flag = !a.flag; fl.classList.toggle('on', a.flag); fl.setAttribute('aria-pressed', a.flag ? 'true' : 'false'); fl.textContent = a.flag ? '⚑ Flagged' : '⚐ Flag'; refresh();
+      } }, a.flag ? '⚑ Flagged' : '⚐ Flag');
+      var back = btn('‹ Back', '', function () { go(i - 1); }); back.disabled = i === 0;
+      var last = i === P.length - 1;
+      show(topbar(o.title, o.leave, (i + 1) + ' / ' + P.length), bar(i / P.length, 'thin'), body);
+      o.head(c, body);
+      xRender(c, body, a.st, refresh);
+      add(body, [h('div', { class: 'qnav' }, back, fl, btn(last ? 'Check answers' : 'Next ›', 'primary', function () { go(i + 1); })),
+        h('p', { class: 'hint gap' }, 'Tap a number to jump to that question.'), map,
+        last ? null : h('button', { class: 'link center', type: 'button', onclick: review }, 'Check answers and submit')]);
+    }
+    function review() {
+      i = P.length;
+      var un = [], fl = [];
+      P.forEach(function (c, k) { if (!xAnswered(c, A[k].st)) un.push(k + 1); if (A[k].flag) fl.push(k + 1); });
+      show(topbar('Check your answers', o.leave),
+        h('div', { class: 'panel hero' }, h('div', { class: 'big' }, (P.length - un.length) + ' / ' + P.length), h('div', null, 'answered'),
+          h('div', { class: 'ready' + (un.length || fl.length ? '' : ' yes') },
+            un.length ? 'Not answered: ' + un.join(', ') + '.' : 'Every question has an answer.',
+            fl.length ? h('br') : null, fl.length ? 'Flagged: ' + fl.join(', ') + '.' : null)),
+        h('p', { class: 'hint' }, 'Tap a number to go back to it. Nothing is marked until you submit.'), grid(-1),
+        btn('Submit', 'primary', function () {
+          if (un.length && !window.confirm(un.length + (un.length === 1 ? ' question is' : ' questions are') + ' not answered and will score zero. Submit anyway?')) return;
+          o.finish(P.map(function (c, k) { return ext(xScore(c, A[k].st), { c: c }); }));
+        }),
+        btn('Back to question ' + P.length, '', function () { go(P.length - 1); }));
+    }
+    go(0);
+  }
+
+  /* exam-style renderers: one per format. State lives in st, so a question redraws as it was left. */
+  function norm(s) { return String(s).toLowerCase().replace(/[‘’]/g, "'").replace(/\s+/g, ' ').trim().replace(/\.$/, ''); }
+  function xInit(c, st) {
+    if (st.init) return st;
+    st.init = true;
+    var f = c.fmt;
+    if (f === 'mc' || f === 'mr') { st.opts = shuffle(c.o.map(function (x, k) { return k; })); st.sel = []; }
+    else if (f === 'seq' || f === 'rank') { st.pool = shuffle(c.order); st.seq = []; }
+    else if (f === 'type' || f === 'num') st.v = '';
+    else if (f === 'select') { st.opts = shuffle([c.a].concat(c.d)); st.v = ''; }
+    else if (f === 'match') {
+      if (c.kind === 'pairs') {
+        var s = c.m.matches[c.set], all = s.pairs.map(function (p, j) { return { id: c.id + '.' + j, l: p[0], r: p[1] }; });
+        st.rows = pick(all, Math.min(4, all.length));
+        var spare = shuffle(all.filter(function (x) { return st.rows.indexOf(x) < 0; })).slice(0, 1); // one extra answer that matches nothing
+        st.opts = shuffle(st.rows.concat(spare).map(function (x) { return x.r; })); st.q = s.title + ': choose the correct match for each item.';
+      } else {
+        st.rows = shuffle(c.rows).slice(0, 5).map(function (x) { return { id: c.id, l: x[0], r: c.cats[x[1]] }; });
+        st.opts = c.cats.slice(); st.q = c.q;
+      }
+      st.vals = st.rows.map(function () { return ''; });
+    } else if (f === 'diagram') {
+      var d = c.m.diagrams[c.dg];
+      st.ask = shuffle(d.marks.map(function (k, j) { return { k: k, j: j }; })).slice(0, Math.min(3, d.marks.length)).sort(function (a, b) { return a.j - b.j; });
+      st.labels = shuffle(d.marks.map(function (k) { return k.l; }));
+      st.vals = st.ask.map(function () { return ''; });
+    }
+    return st;
+  }
+  function xAnswered(c, st) {
+    if (!st.init) return false;
+    var f = c.fmt;
+    if (f === 'mc' || f === 'mr') return st.sel.length > 0;
+    if (f === 'seq' || f === 'rank') return st.seq.length === c.order.length;
+    if (f === 'type' || f === 'num' || f === 'select') return String(st.v).trim() !== '';
+    return st.vals.every(function (v) { return v !== ''; });
+  }
+  function xScore(c, st) {
+    xInit(c, st);
+    var f = c.fmt, ok, v;
+    if (f === 'mc' || f === 'mr') {
+      ok = st.sel.length === c.a.length && st.sel.every(function (k) { return c.a.indexOf(k) >= 0; });
+      return { ok: ok, marks: [[c.id, ok]], picks: st.sel.slice(), given: st.sel.map(function (k) { return c.o[k]; }).join('; ') || 'no answer', right: c.a.map(function (k) { return c.o[k]; }).join('; ') };
+    }
+    if (f === 'seq' || f === 'rank') {
+      ok = st.seq.length === c.order.length && st.seq.join('|') === c.order.join('|');
+      return { ok: ok, marks: [[c.id, ok]], given: st.seq.join(' → ') || 'no answer', right: c.order.join(' → ') };
+    }
+    if (f === 'type' || f === 'num') {
+      v = String(st.v).trim();
+      if (f === 'num') { var x = v.replace(/,/g, ''); ok = x !== '' && isFinite(+x) && Math.abs(+x - c.a) < 1e-9; }
+      else ok = v !== '' && norm(v) === norm(c.a);
+      return { ok: ok, marks: [[c.id, ok]], given: v || 'no answer', right: String(c.a) };
+    }
+    if (f === 'select') { ok = st.v === c.a; return { ok: ok, marks: [[c.id, ok]], given: st.v || 'no answer', right: c.a }; }
+    var marks = [], n = 0, wrong = [];
+    if (f === 'match') {
+      st.rows.forEach(function (x, k) { var good = st.vals[k] === x.r; if (good) n++; else wrong.push(x.l + ' → ' + x.r); if (c.kind === 'pairs') marks.push([x.id, good]); });
+      ok = n === st.rows.length; if (c.kind === 'sort') marks.push([c.id, ok]);
+      return { ok: ok, marks: marks, given: n + ' of ' + st.rows.length + ' matched', right: wrong.join('; '), q: st.q };
+    }
+    st.ask.forEach(function (z, k) { var good = st.vals[k] === z.k.l; if (good) n++; else wrong.push('Marker ' + (z.j + 1) + ' → ' + z.k.l); marks.push([c.id + '.' + z.j, good]); });
+    return { ok: n === st.ask.length, marks: marks, given: n + ' of ' + st.ask.length + ' correct', right: wrong.join('; '), q: c.m.diagrams[c.dg].title };
+  }
+  function xSelect(opts, val, label, set) {
+    var sl = h('select', { class: 'tsel wide', 'aria-label': label }, h('option', { value: '' }, 'Choose…'), opts.map(function (o) { return h('option', { value: o }, o); }));
+    sl.value = val; sl.addEventListener('change', function () { set(sl.value); });
+    return sl;
+  }
+  function xRender(c, body, st, ch) {
+    xInit(c, st);
+    var f = c.fmt;
+    if (f === 'mc' || f === 'mr') {
+      var multi = c.a.length > 1;
+      var grid = h('div', { class: 'opts' }, st.opts.map(function (k) {
+        return h('button', { class: 'opt' + (st.sel.indexOf(k) >= 0 ? ' sel' : ''), type: 'button', onclick: function (ev) {
+          var at = st.sel.indexOf(k);
+          if (multi) { if (at < 0) st.sel.push(k); else st.sel.splice(at, 1); ev.currentTarget.classList.toggle('sel'); }
+          else { st.sel = [k]; Array.prototype.forEach.call(grid.children, function (b) { b.classList.remove('sel'); }); ev.currentTarget.classList.add('sel'); }
+          ch();
+        } }, c.o[k]);
+      }));
+      add(body, [h('div', { class: 'card-q' }, c.q), h('p', { class: 'hint' }, multi ? 'Select all that apply.' : 'Choose one.'), grid]);
+      return;
+    }
+    if (f === 'seq' || f === 'rank') {
+      var list = h('ol', { class: 'seq' }), bank = h('div', { class: 'bank' });
+      var draw = function () {
+        list.innerHTML = ''; bank.innerHTML = '';
+        st.seq.forEach(function (s, k) { list.appendChild(h('li', null, h('button', { class: 'opt', type: 'button', onclick: function () { st.seq.splice(k, 1); draw(); ch(); } }, s))); });
+        st.pool.filter(function (s) { return st.seq.indexOf(s) < 0; }).forEach(function (s) { bank.appendChild(h('button', { class: 'chip', type: 'button', onclick: function () { st.seq.push(s); draw(); ch(); } }, s)); });
+      };
+      add(body, [h('div', { class: 'card-q' }, c.q), h('p', { class: 'hint' }, 'Tap the items in order. Tap one in your list to remove it.'), list, bank]);
+      draw();
+      return;
+    }
+    if (f === 'type' || f === 'num') {
+      var parts = c.text.split('___');
+      var inp = h('input', { class: 'tin' + (f === 'num' ? ' n' : ''), type: 'text', inputmode: f === 'num' ? 'decimal' : 'text', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Your answer' });
+      inp.value = st.v;
+      inp.addEventListener('input', function () { var was = xAnswered(c, st); st.v = inp.value; if (was !== xAnswered(c, st)) ch(); });
+      add(body, [h('div', { class: 'card-q' }, parts[0], inp, parts[1] || ''), h('p', { class: 'hint' }, f === 'num' ? 'Numbers only.' : 'Type the missing word or words.')]);
+      return;
+    }
+    if (f === 'select') {
+      var p2 = c.text.split('___');
+      var sel = h('select', { class: 'tsel', 'aria-label': 'Choose the answer' }, h('option', { value: '' }, 'Choose…'), st.opts.map(function (o) { return h('option', { value: o }, o); }));
+      sel.value = st.v; sel.addEventListener('change', function () { st.v = sel.value; ch(); });
+      add(body, h('div', { class: 'card-q' }, p2[0], sel, p2[1] || ''));
+      return;
+    }
+    if (f === 'match') {
+      add(body, [h('div', { class: 'card-q small' }, st.q), h('div', { class: 'mlist' }, st.rows.map(function (x, k) {
+        return h('label', { class: 'mrow' }, h('span', null, x.l), xSelect(st.opts, st.vals[k], x.l, function (v) { st.vals[k] = v; ch(); }));
+      }))]);
+      return;
+    }
+    if (f === 'diagram') {
+      var d = c.m.diagrams[c.dg], fig = h('div', { class: 'fig' }, h('div', { html: '<svg viewBox="0 0 340 220" role="img" aria-label="' + d.title + '">' + d.svg + '</svg>' }));
+      d.marks.forEach(function (k, j) { fig.appendChild(h('span', { class: 'pin still', style: 'left:' + (k.x / 340 * 100) + '%;top:' + (k.y / 220 * 100) + '%' }, String(j + 1))); });
+      add(body, [h('div', { class: 'card-q small' }, d.title + ': what is at each numbered marker?'), fig,
+        h('div', { class: 'mlist' }, st.ask.map(function (z, k) {
+          return h('label', { class: 'mrow' }, h('span', null, 'Marker ' + (z.j + 1)), xSelect(st.labels, st.vals[k], 'Marker ' + (z.j + 1), function (v) { st.vals[k] = v; ch(); }));
+        }))]);
+    }
   }
 
   /* ---------- revision: 7-day exam countdown ---------- */
@@ -492,8 +670,8 @@
       m._items.forEach(function (x) {
         var base = { m: m, u: x.u, id: x.id };
         if (x.type === 'q') {
-          if (x.order) RVC.push(ext(base, { fmt: RANKRE.test(x.q) ? 'rank' : 'seq', q: x.q, order: x.order, g: x.g }));
-          else RVC.push(ext(base, { fmt: x.a.length > 1 ? 'mr' : 'mc', q: x.q, o: x.o, a: x.a, g: x.g }));
+          if (x.order) RVC.push(ext(base, { fmt: RANKRE.test(x.q) ? 'rank' : 'seq', q: x.q, order: x.order, g: x.g, x: x.x, src: x.src }));
+          else RVC.push(ext(base, { fmt: x.a.length > 1 ? 'mr' : 'mc', q: x.q, o: x.o, a: x.a, g: x.g, x: x.x, src: x.src }));
         } else if (x.type === 'fill') {
           if (NUMRE.test(x.a)) RVC.push(ext(base, { fmt: 'num', text: x.text, a: +x.a }));
           else {
@@ -595,89 +773,17 @@
   function rvStart(day, mock) {
     var r = rvState();
     if (!r.start) { r.start = today(); save(); }
-    var paper = rvPaper(day, mock), i = 0, res = [], title = mock ? 'Full mock exam' : 'Day ' + day.n;
-    function leave() { if (window.confirm('Leave this paper? This attempt will not be saved.')) rvHome(); }
-    function next() {
-      if (i >= paper.length) return rvResult(day, mock, res);
-      var c = paper[i], body = h('div', { class: 'task' });
-      show(topbar(title, leave, (i + 1) + ' / ' + paper.length), bar(i / paper.length, 'thin'), body);
-      add(body, [h('div', { class: 'fmt' }, h('b', null, FMT[c.fmt].name), ' · ', FMT[c.fmt].how),
-        h('div', { class: 'utag' }, c.m ? c.m.title + ' · ' + c.m.units[c.u] : 'Day ' + c.day + ': ' + RV.days[c.day - 1].title)]);
-      rvRender(c, body, function (out) { out.c = c; res.push(out); i++; next(); });
-    }
-    next();
+    paperRun({
+      title: mock ? 'Full mock exam' : 'Day ' + day.n, paper: rvPaper(day, mock),
+      leave: function () { if (window.confirm('Leave this paper? This attempt will not be saved.')) rvHome(); },
+      head: function (c, body) {
+        add(body, [h('div', { class: 'fmt' }, h('b', null, FMT[c.fmt].name), ' · ', FMT[c.fmt].how),
+          h('div', { class: 'utag' }, c.m ? c.m.title + ' · ' + c.m.units[c.u] : 'Day ' + c.day + ': ' + RV.days[c.day - 1].title),
+          c.src === 'mock' ? h('div', { class: 'utag' }, MOCKTAG) : null]);
+      },
+      finish: function (res) { rvResult(day, mock, res); }
+    });
   }
-
-  /* one renderer per format; each calls done({ ok, marks: [[id, ok]], given, right }) */
-  function norm(s) { return String(s).toLowerCase().replace(/[‘’]/g, "'").replace(/\s+/g, ' ').trim().replace(/\.$/, ''); }
-  function rvRender(c, body, done) {
-    var f = c.fmt;
-    if (f === 'mc' || f === 'mr' || f === 'seq' || f === 'rank') {
-      var t = c.order ? { q: c.q, order: c.order } : { q: c.q, o: c.o, a: c.a };
-      return renderQ(c.m || null, t, body, function (ok, given) {
-        done({ ok: ok, marks: [[c.id, ok]], given: given || 'no answer', right: c.order ? c.order.join(' → ') : c.a.map(function (k) { return c.o[k]; }).join('; ') });
-      }, true);
-    }
-    if (f === 'type' || f === 'num') {
-      var parts = c.text.split('___');
-      var inp = h('input', { class: 'tin' + (f === 'num' ? ' n' : ''), type: 'text', inputmode: f === 'num' ? 'decimal' : 'text', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Your answer' });
-      var go = btn('Next', 'primary', function () {
-        var v = inp.value.trim(), ok;
-        if (f === 'num') { var x = v.replace(/,/g, ''); ok = x !== '' && isFinite(+x) && Math.abs(+x - c.a) < 1e-9; }
-        else ok = v !== '' && norm(v) === norm(c.a);
-        done({ ok: ok, marks: [[c.id, ok]], given: v || 'no answer', right: String(c.a) });
-      });
-      add(body, [h('div', { class: 'card-q' }, parts[0], inp, parts[1] || ''), h('p', { class: 'hint' }, f === 'num' ? 'Numbers only.' : 'Type the missing word or words.'), go]);
-      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go.click(); });
-      return;
-    }
-    if (f === 'select') {
-      var p2 = c.text.split('___');
-      var sel = h('select', { class: 'tsel', 'aria-label': 'Choose the answer' }, h('option', { value: '' }, 'Choose…'), shuffle([c.a].concat(c.d)).map(function (o) { return h('option', { value: o }, o); }));
-      add(body, [h('div', { class: 'card-q' }, p2[0], sel, p2[1] || ''),
-        btn('Next', 'primary', function () { var ok = sel.value === c.a; done({ ok: ok, marks: [[c.id, ok]], given: sel.value || 'no answer', right: c.a }); })]);
-      return;
-    }
-    if (f === 'match') {
-      var rows, opts, q;
-      if (c.kind === 'pairs') {
-        var s = c.m.matches[c.set], all = s.pairs.map(function (p, j) { return { id: c.id + '.' + j, l: p[0], r: p[1] }; });
-        rows = pick(all, Math.min(4, all.length));
-        var spare = shuffle(all.filter(function (x) { return rows.indexOf(x) < 0; })).slice(0, 1); // one extra answer that matches nothing
-        opts = shuffle(rows.concat(spare).map(function (x) { return x.r; })); q = s.title + ': choose the correct match for each item.';
-      } else {
-        rows = shuffle(c.rows).slice(0, 5).map(function (x) { return { id: c.id, l: x[0], r: c.cats[x[1]] }; });
-        opts = c.cats.slice(); q = c.q;
-      }
-      var sels = rows.map(function (x) {
-        var sl = h('select', { class: 'tsel wide', 'aria-label': x.l }, h('option', { value: '' }, 'Choose…'), opts.map(function (o) { return h('option', { value: o }, o); }));
-        return { x: x, sl: sl };
-      });
-      add(body, [h('div', { class: 'card-q small' }, q), h('div', { class: 'mlist' }, sels.map(function (z) { return h('label', { class: 'mrow' }, h('span', null, z.x.l), z.sl); })),
-        btn('Next', 'primary', function () {
-          var marks = [], n = 0, wrong = [];
-          sels.forEach(function (z) { var ok = z.sl.value === z.x.r; if (ok) n++; else wrong.push(z.x.l + ' → ' + z.x.r); if (c.kind === 'pairs') marks.push([z.x.id, ok]); });
-          var ok = n === sels.length; if (c.kind === 'sort') marks.push([c.id, ok]);
-          done({ ok: ok, marks: marks, given: n + ' of ' + sels.length + ' matched', right: wrong.join('; '), q: q });
-        })]);
-      return;
-    }
-    if (f === 'diagram') {
-      var d = c.m.diagrams[c.dg], fig = h('div', { class: 'fig' }, h('div', { html: '<svg viewBox="0 0 340 220" role="img" aria-label="' + d.title + '">' + d.svg + '</svg>' }));
-      d.marks.forEach(function (k, j) { fig.appendChild(h('span', { class: 'pin still', style: 'left:' + (k.x / 340 * 100) + '%;top:' + (k.y / 220 * 100) + '%' }, String(j + 1))); });
-      var ask = shuffle(d.marks.map(function (k, j) { return { k: k, j: j }; })).slice(0, Math.min(3, d.marks.length)).sort(function (a, b) { return a.j - b.j; });
-      var labels = shuffle(d.marks.map(function (k) { return k.l; }));
-      var ds = ask.map(function (a) { return { a: a, sl: h('select', { class: 'tsel wide', 'aria-label': 'Marker ' + (a.j + 1) }, h('option', { value: '' }, 'Choose…'), labels.map(function (o) { return h('option', { value: o }, o); })) }; });
-      add(body, [h('div', { class: 'card-q small' }, d.title + ': what is at each numbered marker?'), fig,
-        h('div', { class: 'mlist' }, ds.map(function (z) { return h('label', { class: 'mrow' }, h('span', null, 'Marker ' + (z.a.j + 1)), z.sl); })),
-        btn('Next', 'primary', function () {
-          var marks = [], n = 0, wrong = [];
-          ds.forEach(function (z) { var ok = z.sl.value === z.a.k.l; if (ok) n++; else wrong.push('Marker ' + (z.a.j + 1) + ' → ' + z.a.k.l); marks.push([c.id + '.' + z.a.j, ok]); });
-          done({ ok: n === ds.length, marks: marks, given: n + ' of ' + ds.length + ' correct', right: wrong.join('; '), q: d.title });
-        })]);
-    }
-  }
-
   function rvResult(day, mock, res) {
     var r = rvState(), score = 0, byF = {};
     res.forEach(function (x) {
@@ -706,6 +812,7 @@
           h('p', { class: 'q' }, x.q || c.q || c.text.replace('___', '_____')),
           h('p', { class: 'no' }, (multi ? 'You got: ' : 'Your answer: ') + x.given),
           h('p', { class: 'ok' }, (multi ? 'Correct: ' : (c.fmt === 'seq' || c.fmt === 'rank' ? 'Correct order: ' : 'Correct answer: ')) + x.right),
+          c.x ? h('p', { class: 'note' }, c.x) : null,
           h('small', null, c.m ? c.m.title + ' · ' + c.m.units[c.u] : 'Revision · Day ' + c.day));
       }),
       btn(mock ? 'Sit another mock' : 'Sit this day again', 'primary', function () { rvStart(day, mock); }), btn('Back to countdown', '', rvHome));
