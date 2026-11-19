@@ -412,7 +412,8 @@
       add(after, [h('div', { class: 'fb ' + (clean === d.marks.length ? 'ok' : 'no') }, h('strong', null, clean + ' of ' + d.marks.length + ' placed first time.')),
         btn('Try again', 'primary', function () { diagram(m, di); }), btn('Other diagrams', '', function () { diagramList(m); })]);
     }
-    show(topbar(d.title, function () { diagramList(m); }), h('div', { class: 'task' }, h('div', { class: 'utag' }, m.units[d.u]), h('p', { class: 'hint' }, d.hint + ' Tap a label, then tap its number.'), fig, bank, key, after));
+    show(topbar(d.title, function () { diagramList(m); }), h('div', { class: 'task' }, h('div', { class: 'utag' }, m.units[d.u]), h('p', { class: 'hint' }, d.hint + ' Tap a label, then tap its number.'),
+      h('div', { class: 'dgrid' }, h('div', { class: 'dfig' }, fig), h('div', { class: 'dside' }, bank, key, after))));
   }
 
   /* ---------- final exam ---------- */
@@ -647,11 +648,47 @@
     }
     if (f === 'diagram') {
       var d = c.m.diagrams[c.dg], fig = h('div', { class: 'fig' }, h('div', { html: '<svg viewBox="0 0 340 220" role="img" aria-label="' + d.title + '">' + d.svg + '</svg>' }));
-      d.marks.forEach(function (k, j) { fig.appendChild(h('span', { class: 'pin still', style: 'left:' + (k.x / 340 * 100) + '%;top:' + (k.y / 220 * 100) + '%' }, String(j + 1))); });
-      add(body, [h('div', { class: 'card-q small' }, d.title + ': what is at each numbered marker?'), fig,
-        h('div', { class: 'mlist' }, st.ask.map(function (z, k) {
-          return h('label', { class: 'mrow' }, h('span', null, 'Marker ' + (z.j + 1)), xSelect(st.labels, st.vals[k], 'Marker ' + (z.j + 1), function (v) { st.vals[k] = v; ch(); }));
-        }))]);
+      // v0.9.1: tap a label, then tap its number (or the other way round). No dropdowns.
+      // Only the asked markers are tappable; the others are dimmed. Each label can be used once.
+      var askAt = {}, pins = [], selL = null, selM = null;
+      var bank = h('div', { class: 'bank' }), key = h('div', { class: 'dkey' });
+      st.ask.forEach(function (z, k) { askAt[z.j] = k; });
+      d.marks.forEach(function (mk, j) {
+        var pos = 'left:' + (mk.x / 340 * 100) + '%;top:' + (mk.y / 220 * 100) + '%', k = askAt[j];
+        if (k === undefined) { fig.appendChild(h('span', { class: 'pin still off', style: pos, 'aria-hidden': 'true' }, String(j + 1))); return; }
+        pins[k] = h('button', { class: 'pin', type: 'button', style: pos, onclick: function () { tapM(k); } }, String(j + 1));
+        fig.appendChild(pins[k]);
+      });
+      var assign = function (k, l) {
+        st.vals.forEach(function (v, q) { if (v === l) st.vals[q] = ''; });
+        st.vals[k] = l; selL = null; selM = null; draw(); ch();
+      };
+      var tapL = function (l) { if (selM !== null) assign(selM, l); else { selL = selL === l ? null : l; draw(); } };
+      var tapM = function (k) {
+        if (selL !== null) assign(k, selL);
+        else if (st.vals[k]) { st.vals[k] = ''; selM = null; draw(); ch(); }
+        else { selM = selM === k ? null : k; draw(); }
+      };
+      var draw = function () {
+        bank.innerHTML = ''; key.innerHTML = '';
+        st.labels.forEach(function (l) {
+          var used = st.vals.indexOf(l) >= 0;
+          bank.appendChild(h('button', { class: 'chip' + (selL === l ? ' on' : '') + (used ? ' used' : ''), type: 'button', 'aria-pressed': selL === l ? 'true' : 'false', onclick: function () { tapL(l); } }, l));
+        });
+        st.ask.forEach(function (z, k) {
+          var v = st.vals[k], n = String(z.j + 1);
+          pins[k].className = 'pin' + (v ? ' set' : '') + (selM === k ? ' on' : '');
+          pins[k].setAttribute('aria-label', 'Marker ' + n + (v ? ': ' + v + '. Tap to clear.' : ': no answer yet'));
+          key.appendChild(h('button', { class: 'drow' + (v ? ' set' : '') + (selM === k ? ' on' : ''), type: 'button', onclick: function () { tapM(k); } },
+            h('b', null, n), h('span', null, v || 'Not answered yet'), v ? h('i', { 'aria-hidden': 'true' }, '×') : null));
+        });
+      };
+      var nums = st.ask.map(function (z) { return z.j + 1; });
+      var asked = nums.length === d.marks.length ? '' : ' Only markers ' + nums.slice(0, -1).join(', ') + ' and ' + nums[nums.length - 1] + ' are asked.';
+      add(body, [h('div', { class: 'card-q small' }, d.title + ': what is at each numbered marker?'),
+        h('div', { class: 'dgrid' }, h('div', { class: 'dfig' }, fig),
+          h('div', { class: 'dside' }, h('p', { class: 'hint' }, 'Tap a label, then tap its number. Tap a filled number to clear it.' + asked), bank, key))]);
+      draw();
     }
   }
 
