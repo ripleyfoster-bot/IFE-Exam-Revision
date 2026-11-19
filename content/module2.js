@@ -352,12 +352,12 @@ window.IFE_MODULES.push({
            '<rect x="262" y="22" width="8" height="178" class="solid"/><rect x="290" y="22" width="8" height="178" class="solid"/>' +
            '<rect x="20" y="14" width="278" height="8" class="solid"/><line x1="48" y1="44" x2="262" y2="44" class="ax"/>' +
            '<rect x="48" y="110" width="214" height="12" class="solid"/>' +
-           '<rect x="130" y="44" width="10" height="66" class="furn"/><rect x="130" y="122" width="10" height="78" class="furn"/>' +
-           '<rect x="131" y="22" width="8" height="22" class="hatch"/><rect x="270" y="110" width="20" height="12" class="hatch"/><rect x="31" y="110" width="9" height="12" class="hatch"/>' +
+           '<rect x="130" y="22" width="10" height="88" class="furn"/><rect x="130" y="122" width="10" height="78" class="furn"/>' +
+           '<rect x="196" y="22" width="8" height="22" class="hatch"/><rect x="270" y="110" width="20" height="12" class="hatch"/><rect x="31" y="110" width="9" height="12" class="hatch"/>' +
            '<rect x="104" y="176" width="62" height="6" class="pipe"/><line x1="20" y1="200" x2="298" y2="200" class="ax"/>' +
-           '<text x="200" y="37" class="tx" text-anchor="middle">Roof void</text><text x="200" y="174" class="tx" text-anchor="middle">Pipe</text>' +
+           '<text x="89" y="37" class="tx" text-anchor="middle">Roof void</text><text x="200" y="174" class="tx" text-anchor="middle">Pipe</text>' +
            '<text x="6" y="214" class="tx">Ventilated rainscreen</text><text x="334" y="214" class="tx" text-anchor="end">Masonry cavity wall</text>',
-      marks: [ {x: 135, y: 179, l: 'Penetration seal'}, {x: 135, y: 128, l: 'Linear joint seal'}, {x: 280, y: 116, l: 'Small cavity barrier'}, {x: 135, y: 33, l: 'Large cavity barrier'}, {x: 32, y: 116, l: 'Open state cavity barrier'} ] },
+      marks: [ {x: 135, y: 179, l: 'Penetration seal'}, {x: 135, y: 128, l: 'Linear joint seal'}, {x: 280, y: 116, l: 'Small cavity barrier'}, {x: 200, y: 33, l: 'Large cavity barrier'}, {x: 32, y: 116, l: 'Open state cavity barrier'} ] },
     { u: 4, title: 'Duct through a compartment wall',
       hint: 'A ventilation duct passes through a compartment wall. Label each part.',
       svg: '<line x1="20" y1="18" x2="320" y2="18" class="ax"/><rect x="160" y="18" width="20" height="184" class="solid"/>' +

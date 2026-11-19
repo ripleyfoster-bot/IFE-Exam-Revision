@@ -189,7 +189,7 @@ window.IFE_MODULES.push({
       ['Class F', 'Cooking oil, fats and grease']
     ]},
     { u: 1, title: 'Fixed firefighting measures', pairs: [
-      ['Dry riser', 'Empty main; buildings above 18 metres'],
+      ['Dry riser', 'Ground-level inlet; buildings above 18 metres'],
       ['Wet riser', 'Permanently charged; buildings above 50 metres'],
       ['Inert gas system', 'Reduces oxygen to below 15%'],
       ['Clean chemical gas system', 'Works by absorbing heat'],
@@ -440,7 +440,7 @@ window.IFE_MODULES.push({
 
     { u: 4, g: ['fe-source'], q: 'A fire engineer is reviewing a complex building design that does not fit neatly within prescriptive guidance. Which source of information is MOST likely to be relied upon?', o: ['Scientific and engineering techniques', 'Paint manufacturer\'s catalogue', 'Occupant feedback surveys', 'Product marketing literature'], a: [0] },
     { u: 4, g: ['fe-priority'], q: 'A fire engineer is considering alternative approaches to a complex building design. Which factor should take precedence?', o: ['Occupant life safety', 'Architectural preference', 'Construction speed', 'Maintenance cost'], a: [0] },
-    { u: 4, g: ['fe-disciplines'], q: 'Which of the following disciplines should a fire engineer have a working knowledge of?', o: ['Fire science', 'Human behaviour in fire', 'Smoke control', 'Passive fire protection', 'Active fire protection', 'Interior decoration'], a: [0, 1, 2, 3, 4] },
+    { u: 4, g: ['fe-disciplines'], q: 'Which of the following disciplines should a fire engineer have a working knowledge of?', o: ['Fire science', 'Human behaviour in fire', 'Smoke control', 'Risk assessment', 'Fire ground operations', 'Passive fire protection', 'Active fire protection', 'Interior decoration'], a: [0, 1, 2, 3, 4, 5, 6] },
     { u: 4, g: ['fe-priority'], q: 'Rank these fire engineering objectives from highest to lowest priority.', order: ['Life safety', 'Prevention of premature structural collapse', 'Property protection', 'Environmental protection'] },
     { u: 4, g: ['fe-tools'], q: 'Which fire engineering tool or resource is "analysis using validated numerical techniques"?', o: ['Computer modelling', 'Fire test evidence', 'Expert judgement', 'Human behaviour studies'], a: [0] },
     { u: 4, g: ['fe-priority'], q: 'In a complex building design, which consideration should generally take priority when determining fire resistance requirements?', o: ['Demonstrated life safety performance', 'Architectural appearance', 'Ease of construction', 'Future maintenance requirements'], a: [0] },
