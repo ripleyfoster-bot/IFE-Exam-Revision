@@ -75,13 +75,21 @@
     if (!el) return;
     el.classList.toggle('on', on); el.setAttribute('aria-pressed', on ? 'true' : 'false');
     if (el.classList.contains('say')) { el.innerHTML = on ? STOP_ICON : SPK_ICON; el.setAttribute('aria-label', on ? 'Stop reading' : 'Read aloud'); }
-    else el.textContent = on ? '■ Stop' : '🔊 Read this';
+    else { if (!el.getAttribute('data-label')) el.setAttribute('data-label', el.textContent); el.textContent = on ? '■ Stop' : el.getAttribute('data-label'); }
   }
   function sayStop() {
     if (!SAY.ok) return;
     SAY.tok++; SAY.on = false;
-    try { window.speechSynthesis.cancel(); } catch (e) {}
+    // only cancel when something is playing: on iPhone, cancel() straight before speak() can swallow the new speech
+    try { var ss = window.speechSynthesis; if (ss.speaking || ss.pending) ss.cancel(); } catch (e) {}
     sayMark(SAY.btn, false); SAY.btn = null;
+  }
+  // a short message under the top bar, so a silent failure is visible
+  function sayNote(msg) {
+    var old = app.querySelector('.saynote'); if (old) old.remove();
+    if (!msg) return;
+    var top = app.querySelector('header.top'), n = h('p', { class: 'saynote', role: 'status' }, msg);
+    if (top && top.nextSibling) top.parentNode.insertBefore(n, top.nextSibling); else app.insertBefore(n, app.firstChild);
   }
   function sayClean(s) {
     return String(s)
@@ -104,18 +112,36 @@
   function say(text, el) {
     if (!SAY.ok) return;
     var wasMine = SAY.on && SAY.btn === el;
-    sayStop();
+    sayStop(); sayNote('');
     if (wasMine) return; // second tap on the same button stops it
     var parts = saySplit(sayClean(text));
     if (!parts.length) return;
-    var tok = SAY.tok; SAY.on = true; SAY.btn = el; sayMark(el, true);
-    parts.forEach(function (p, k) {
-      var u = new window.SpeechSynthesisUtterance(p);
-      u.lang = 'en-GB'; u.rate = 1; u.pitch = 1; if (SAY.voice) u.voice = SAY.voice;
-      if (k === parts.length - 1) u.onend = function () { if (tok === SAY.tok) { SAY.on = false; sayMark(SAY.btn, false); SAY.btn = null; } };
-      u.onerror = function () { if (tok === SAY.tok) { SAY.on = false; sayMark(SAY.btn, false); SAY.btn = null; } };
-      window.speechSynthesis.speak(u); // queued now, inside the tap, so iPhone allows it
-    });
+    var tok = SAY.tok, started = false, ss = window.speechSynthesis;
+    SAY.on = true; SAY.btn = el; sayMark(el, true);
+    function done() { if (tok !== SAY.tok) return; SAY.on = false; sayMark(SAY.btn, false); SAY.btn = null; }
+    // one sentence at a time, the next started when the last ends (the pattern the 12 Week Year app uses)
+    function next(k, useVoice) {
+      if (tok !== SAY.tok) return;
+      if (k >= parts.length) return done();
+      var u = new window.SpeechSynthesisUtterance(parts[k]);
+      u.lang = 'en-GB'; u.rate = 1; u.pitch = 1; u.volume = 1;
+      if (useVoice && SAY.voice) u.voice = SAY.voice;
+      u.onstart = function () { started = true; };
+      u.onend = function () { if (tok === SAY.tok) next(k + 1, useVoice); };
+      u.onerror = function (e) {
+        if (tok !== SAY.tok) return;
+        var why = e && e.error;
+        if (why === 'interrupted' || why === 'canceled') return done();
+        if (!started && useVoice && SAY.voice) return next(k, false); // chosen voice failed: use the device default
+        done(); sayNote('Read aloud stopped (' + (why || 'unknown error') + ').');
+      };
+      ss.speak(u);
+      if (ss.paused) ss.resume(); // iPhone can leave the voice paused after the app was in the background
+    }
+    try { next(0, true); } catch (e) { done(); sayNote('Read aloud could not start: ' + e.message); return; }
+    setTimeout(function () {
+      if (tok === SAY.tok && !started) sayNote('No sound yet? On iPhone and iPad, read aloud is silent when the phone is on Silent: turn Silent off, turn the volume up and tap the speaker again.');
+    }, 2500);
   }
   // the readable text of one element: blanks, typed answers and dropdowns are spoken, buttons are not
   function sayText(el) {
@@ -258,6 +284,7 @@
         btn('Change my details', '', function () { welcome(true); }),
         h('p', { class: 'gap' }, 'Version ' + CFG.version + '. Your details and progress are stored on this device only.'),
         h('p', null, 'AI tutor: ' + (AI.on ? 'on' : 'off in this version') + '.'),
+        SAY.ok ? (function () { var tb = btn('🔊 Test the voice', '', function () { say('Read aloud is working. This is the voice the app will use for questions.', tb); }); return tb; })() : null,
         h('p', null, SAY.ok ? 'Read aloud: tap the speaker at the top of any question or result to hear it, and tap again to stop. It uses this device\'s own voice' + (SAY.voice ? ' (' + SAY.voice.name + ')' : '') + ' and works offline.' : 'Read aloud: this browser has no built-in voice, so the speaker button is hidden.')),
       h('div', { class: 'panel' }, h('h2', { class: 'in' }, 'Course material and disclaimer'), notices()),
       h('p', { class: 'copy' }, COPY),
