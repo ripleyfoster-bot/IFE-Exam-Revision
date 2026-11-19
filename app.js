@@ -61,10 +61,26 @@
   var SAY = { ok: !!(window.speechSynthesis && window.SpeechSynthesisUtterance), on: false, tok: 0, btn: null, voice: null };
   var SPK_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
   var STOP_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>';
+  // novelty and robotic voices Apple ships alongside the real ones: never chosen automatically
+  var NOVELTY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley|Fred|Junior|Kathy|Ralph)\b/i;
+  function voiceScore(v) {
+    var n = v.name || '', sc = 0;
+    if (NOVELTY.test(n)) return -100;
+    if (/en[-_]GB/i.test(v.lang)) sc += 20; else if (/^en/i.test(v.lang)) sc += 5; else return -50;
+    if (/premium/i.test(n)) sc += 30; else if (/enhanced/i.test(n)) sc += 20;
+    if (/siri/i.test(n)) sc += 10;
+    if (/compact/i.test(v.voiceURI || '')) sc -= 5;
+    return sc;
+  }
+  function voiceList() {
+    if (!SAY.ok) return [];
+    return (window.speechSynthesis.getVoices() || []).filter(function (v) { return voiceScore(v) > 0; })
+      .sort(function (a, b) { return voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name); });
+  }
   function pickVoice() {
     if (!SAY.ok) return;
-    var vs = window.speechSynthesis.getVoices() || [], gb = vs.filter(function (v) { return /en[-_]GB/i.test(v.lang); });
-    SAY.voice = gb.filter(function (v) { return v.localService; })[0] || gb[0] || null;
+    var vs = voiceList(), want = S.voice || '';
+    SAY.voice = vs.filter(function (v) { return v.name === want; })[0] || vs[0] || null;
   }
   if (SAY.ok) {
     pickVoice();
@@ -111,7 +127,7 @@
   }
   function say(text, el) {
     if (!SAY.ok) return;
-    var wasMine = SAY.on && SAY.btn === el;
+    var wasMine = !!el && SAY.on && SAY.btn === el;
     sayStop(); sayNote('');
     if (wasMine) return; // second tap on the same button stops it
     var parts = saySplit(sayClean(text));
@@ -284,6 +300,15 @@
         btn('Change my details', '', function () { welcome(true); }),
         h('p', { class: 'gap' }, 'Version ' + CFG.version + '. Your details and progress are stored on this device only.'),
         h('p', null, 'AI tutor: ' + (AI.on ? 'on' : 'off in this version') + '.'),
+        SAY.ok ? (function () {
+          pickVoice();
+          var vs = voiceList();
+          if (!vs.length) return h('p', { class: 'hint' }, 'No English voices found yet. Close and reopen the app, then look here again.');
+          var sl = h('select', { class: 'tsel wide', 'aria-label': 'Read-aloud voice' }, vs.map(function (v) { return h('option', { value: v.name }, v.name + (/en[-_]GB/i.test(v.lang) ? ' (British)' : ' (' + v.lang + ')')); }));
+          sl.value = SAY.voice ? SAY.voice.name : '';
+          sl.addEventListener('change', function () { S.voice = sl.value; save(); pickVoice(); say('This is ' + sl.value + '. I will read your questions in this voice.', null); });
+          return h('div', { class: 'gap' }, h('p', null, h('b', null, 'Read-aloud voice'), ' (best first; your choice is saved on this device)'), sl);
+        })() : null,
         SAY.ok ? (function () { var tb = btn('🔊 Test the voice', '', function () { say('Read aloud is working. This is the voice the app will use for questions.', tb); }); return tb; })() : null,
         h('p', null, SAY.ok ? 'Read aloud: tap the speaker at the top of any question or result to hear it, and tap again to stop. It uses this device\'s own voice' + (SAY.voice ? ' (' + SAY.voice.name + ')' : '') + ' and works offline.' : 'Read aloud: this browser has no built-in voice, so the speaker button is hidden.')),
       h('div', { class: 'panel' }, h('h2', { class: 'in' }, 'Course material and disclaimer'), notices()),
