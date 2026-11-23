@@ -184,6 +184,8 @@ html::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-even
 .qn.cur { box-shadow: 0 0 0 2px var(--accent); }
 .qn.flag::after { content: '⚑'; position: absolute; top: -7px; right: -4px; font-size: 0.8rem; color: #b37800; }
 .note { color: var(--ink); font-size: 0.9rem; margin: 8px 0 0; }
+.why { color: var(--ink); margin: 10px 0 0; padding-top: 10px; border-top: 1px solid currentColor; border-top-color: rgba(127,127,127,.35); }
+.why small { display: block; color: var(--mute); margin-top: 4px; }
 .rev .note { color: var(--mute); }
 
 /* v0.9.1: diagram questions. Tap a label, then its number. Side by side on wide screens so nothing needs scrolling. */

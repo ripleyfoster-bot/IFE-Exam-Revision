@@ -238,11 +238,17 @@
   function bar(frac, cls) { return h('div', { class: 'bar ' + (cls || '') }, h('i', { style: 'width:' + Math.round(frac * 100) + '%' })); }
 
   /* ---------- item index and mastery ---------- */
+  // reasons shown after every checked answer, right or wrong: content/why.js, { id: [reason, pack page] }
+  var WHY = window.IFE_WHY || {};
+  function whyLine(m, t) {
+    if (!t || !t.why) return null;
+    return h('p', { class: 'why' }, h('b', null, 'Why: '), t.why[0], h('small', null, typeof t.why[1] === 'number' ? ' Course pack: ' + m.title + ', ' + m.units[t.u] + ', page ' + t.why[1] + '.' : ' Source: ' + t.why[1] + '.'));
+  }
   function build(m) {
     var it = [];
     m.cards.forEach(function (c, i) { it.push({ id: m.id + '.c' + i, type: 'card', u: c[0], q: c[1], a: c[2] }); });
-    m.fills.forEach(function (f, i) { it.push({ id: m.id + '.f' + i, type: 'fill', u: f[0], text: f[1], a: f[2], d: f[3] }); });
-    m.questions.forEach(function (q, i) { it.push({ id: m.id + '.q' + i, type: 'q', u: q.u, q: q.q, o: q.o, a: q.a, order: q.order, g: q.g || [], x: q.x, src: q.src }); });
+    m.fills.forEach(function (f, i) { it.push({ id: m.id + '.f' + i, type: 'fill', u: f[0], text: f[1], a: f[2], d: f[3], why: WHY[m.id + '.f' + i] }); });
+    m.questions.forEach(function (q, i) { it.push({ id: m.id + '.q' + i, type: 'q', u: q.u, q: q.q, o: q.o, a: q.a, order: q.order, g: q.g || [], x: q.x, src: q.src, why: WHY[m.id + '.q' + i] }); });
     m.matches.forEach(function (s, i) { s.pairs.forEach(function (p, j) { it.push({ id: m.id + '.p' + i + '.' + j, type: 'pair', u: s.u, set: i, k: j }); }); });
     m.diagrams.forEach(function (d, i) { d.marks.forEach(function (k, j) { it.push({ id: m.id + '.d' + i + '.' + j, type: 'mark', u: d.u, dg: i, k: j }); }); });
     m._items = it;
@@ -456,7 +462,7 @@
 
   /* ---------- task renderers ---------- */
   function feedback(m, ok, text, t) {
-    var box = h('div', { class: 'fb ' + (ok ? 'ok' : 'no') }, h('strong', null, ok ? 'Correct. ' : 'Not quite. '), text || '', t && t.x ? h('p', { class: 'note' }, t.x) : null);
+    var box = h('div', { class: 'fb ' + (ok ? 'ok' : 'no') }, h('strong', null, ok ? 'Correct. ' : 'Not quite. '), text || '', whyLine(m, t), t && t.x ? h('p', { class: 'note' }, t.x) : null);
     add(box, sayBox(box));
     if (!ok && AI.on) {
       var out = h('p', { class: 'ai' });
@@ -632,7 +638,7 @@
   }
   function exam(m) {
     var paper = examPaper(m).map(function (t) {
-      return { m: m, u: t.u, id: t.id, fmt: t.order ? 'seq' : t.a.length > 1 ? 'mr' : 'mc', q: t.q, o: t.o, a: t.a, order: t.order, x: t.x, src: t.src };
+      return { m: m, u: t.u, id: t.id, fmt: t.order ? 'seq' : t.a.length > 1 ? 'mr' : 'mc', q: t.q, o: t.o, a: t.a, order: t.order, x: t.x, src: t.src, why: t.why };
     });
     paperRun({
       title: 'Final exam', paper: paper,
@@ -668,7 +674,7 @@
             if (!picks.length) rows.unshift(h('li', { class: 'no' }, 'Not answered.'));
             detail = h('ul', { class: 'marks' }, rows);
           }
-          return h('div', { class: 'panel rev' }, h('p', { class: 'q' }, t.q), detail, t.x ? h('p', { class: 'note' }, t.x) : null, h('small', null, m.units[t.u]));
+          return h('div', { class: 'panel rev' }, h('p', { class: 'q' }, t.q), detail, whyLine(m, t), t.x ? h('p', { class: 'note' }, t.x) : null, h('small', null, m.units[t.u]));
         }),
         btn('Back to module', 'primary', function () { modScreen(m); }));
     }
