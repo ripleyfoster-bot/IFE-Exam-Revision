@@ -292,7 +292,7 @@
       var rs = rvState(), dn = rvDayNow();
       list.push(h('button', { class: 'modcard rvcard', type: 'button', onclick: rvHome },
         h('strong', null, RV.title), h('span', null, RV.subtitle + ': every module, in the IFE exam formats'),
-        bar(rs.start ? Math.min(7, dn) / 7 : 0), h('small', null, rs.start ? (dn > 7 ? 'All 7 days open' : 'Day ' + dn + ' of 7') : 'Not started')));
+        bar(rs.unlocked ? 1 : rs.start ? Math.min(7, dn) / 7 : 0), h('small', null, rs.unlocked ? 'All 7 days unlocked' : rs.start ? (dn > 7 ? 'All 7 days open' : 'Day ' + dn + ' of 7') : 'Not started')));
     }
     show(h('header', { class: 'top home' }, logo(36), h('h1', null, 'IFE Level 3 Revision'), h('button', { class: 'link', type: 'button', onclick: about }, 'About')),
       h('p', { class: 'lead' }, 'Pick a module. The app tracks what you know and steers practice to your weak spots.'), list);
@@ -318,12 +318,26 @@
         SAY.ok ? (function () { var tb = btn('🔊 Test the voice', '', function () { say('Read aloud is working. This is the voice the app will use for questions.', tb); }); return tb; })() : null,
         h('p', null, SAY.ok ? 'Read aloud: tap the speaker at the top of any question or result to hear it, and tap again to stop. It uses this device\'s own voice' + (SAY.voice ? ' (' + SAY.voice.name + ')' : '') + ' and works offline.' : 'Read aloud: this browser has no built-in voice, so the speaker button is hidden.')),
       backupPanel(),
+      unlockPanel(),
       h('div', { class: 'panel' }, h('h2', { class: 'in' }, 'Course material and disclaimer'), notices()),
       h('p', { class: 'copy' }, COPY),
       btn('Reset all progress', 'bad', function () {
         // keeps the user's details and agreement; erases learning progress only
         if (window.confirm('Erase all progress on this device?')) { S = { v: 1, items: {}, exams: {}, user: S.user }; save(); home(); }
       }));
+  }
+
+  /* ---------- countdown override: open all 7 Revision days at once (exam less than 7 days away) ---------- */
+  function unlockPanel() {
+    if (!RV) return null;
+    var r = rvState();
+    var tick = h('input', { type: 'checkbox', id: 'rvunlock' }); tick.checked = !!r.unlocked;
+    tick.addEventListener('change', function () { r.unlocked = tick.checked; save(); msg.textContent = tick.checked ? 'Every Revision day and the full mock are now open.' : 'Back to one day at a time from your start date. Scores are kept.'; });
+    var msg = h('p', { class: 'hint gap', role: 'status' });
+    return h('div', { class: 'panel' }, h('h2', { class: 'in' }, 'Exam soon?'),
+      h('p', null, 'The Revision countdown opens one day at a time over 7 days. If your exam is sooner, release it to open every day and the full mock now.'),
+      h('label', { class: 'agree', for: 'rvunlock' }, tick, h('span', null, 'Release the 7-day countdown: open all days and the full mock now')),
+      msg);
   }
 
   /* ---------- save and import: one file holding progress, exam history and settings ---------- */
@@ -996,7 +1010,8 @@
     return Math.round((b - a) / 86400000);
   }
   function rvDayNow() { var r = rvState(); return r.start ? Math.max(1, daysSince(r.start) + 1) : 0; }
-  function dayOpen(n) { var r = rvState(); return r.start ? daysSince(r.start) >= n - 1 : n === 1; }
+  // r.unlocked (About screen tick box) opens every day and the mock now, for an exam less than 7 days away
+  function dayOpen(n) { var r = rvState(); if (r.unlocked) return true; return r.start ? daysSince(r.start) >= n - 1 : n === 1; }
   function inDay(day, c) {
     if (c.day) return c.day === day.n;
     return !!c.m && day.units.some(function (p) { return p[0] === c.m.id && p[1] === c.u; });
@@ -1061,8 +1076,8 @@
     });
     show(topbar('Revision', home),
       h('div', { class: 'panel hero' },
-        h('div', { class: 'big' }, r.start ? (now > 7 ? 'Done' : 'Day ' + now) : '7 days'),
-        h('div', null, r.start ? (now > 7 ? 'All seven days are open. Keep sitting papers.' : 'of 7 · started ' + r.start.split('-').reverse().join('/')) : 'One exam-style paper a day, in the IFE online formats.'),
+        h('div', { class: 'big' }, r.unlocked ? 'All open' : r.start ? (now > 7 ? 'Done' : 'Day ' + now) : '7 days'),
+        h('div', null, r.unlocked ? 'Countdown released: every day and the full mock are open. Turn this off in About.' : r.start ? (now > 7 ? 'All seven days are open. Keep sitting papers.' : 'of 7 · started ' + r.start.split('-').reverse().join('/')) : 'One exam-style paper a day, in the IFE online formats.'),
         h('div', { class: 'ready' }, 'Exam conditions: no feedback until you finish. Modules One to Three stay open for practice at any time.')),
       h('h2', null, 'Your countdown'), rows, mock,
       h('h2', null, 'Score by exam format'), fs,
