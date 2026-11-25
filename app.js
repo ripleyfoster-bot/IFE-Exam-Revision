@@ -610,7 +610,7 @@
     }
     function resumeIdx(u) { var r = REC[u]; return !r ? 0 : r.done && r.p >= r.n - 1 ? 0 : Math.min(r.p || 0, (r.n || 1) - 1); }
     function begin(k, idx) {
-      var bg = app.querySelector('.rdmodal'); if (bg) bg.remove();
+      var bg = document.querySelector('.rdmodal'); if (bg) bg.remove();
       goTo(k, idx); recording = true; track();
     }
     // the dialogue: which unit to resume (All units), or resume / start again (one unit)
@@ -633,13 +633,15 @@
         }).concat([btn('Start from the beginning of the module', '', function () { begin(0, 0); })]);
       }
       var box = h('div', { class: 'rdbox', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Resume reading' }, h('h3', null, one ? 'Carry on reading?' : 'Pick up where you left off'), msg, rows);
-      app.appendChild(h('div', { class: 'rdmodal' }, box));
+      // on the page body, not inside #app: on laptops #app has a frosted (backdrop-filter) panel, which would
+      // make the dialogue centre on the whole page height instead of the window
+      document.body.appendChild(h('div', { class: 'rdmodal' }, box));
     }
     function onScroll() { if (!raf) raf = requestAnimationFrame(track); }
     function onResize() { place(); onScroll(); }
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize);
-    leaveScreen = function () { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onResize); if (raf) cancelAnimationFrame(raf); window.removeEventListener('pagehide', flush); flush(); };
+    leaveScreen = function () { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onResize); if (raf) cancelAnimationFrame(raf); window.removeEventListener('pagehide', flush); flush(); var bg = document.querySelector('.rdmodal'); if (bg) bg.remove(); };
     window.addEventListener('pagehide', flush);
     place(); track(); askResume();
 
