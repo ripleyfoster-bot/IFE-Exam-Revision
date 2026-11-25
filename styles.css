@@ -255,3 +255,14 @@ html::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-even
 .reader .rdon { background: var(--goodbg); border-radius: 6px; box-shadow: 0 0 0 5px var(--goodbg); }
 .rdend { margin-top: 8px; }
 @media (min-width: 900px) { .rdstick { margin: 0 -28px 12px; padding: 4px 28px 2px; } }
+
+/* resume dialogue (v0.15.0) */
+.rdmodal { position: fixed; inset: 0; z-index: 30; background: rgba(10, 12, 16, .55); display: flex; align-items: flex-end; justify-content: center; padding: 16px; }
+.rdbox { background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 18px; padding: 18px; width: 100%; max-width: 460px; max-height: 85vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+.rdbox h3 { margin: 0 0 6px; font-size: 1.15rem; }
+.rdbox > p { margin: 0 0 8px; color: var(--mute); }
+.rdpick { display: block; width: 100%; text-align: left; margin-top: 8px; padding: 12px 14px; min-height: 52px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.rdpick strong { display: block; }
+.rdpick small { color: var(--mute); }
+.rdpick.last { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+@media (min-width: 600px) { .rdmodal { align-items: center; } }
