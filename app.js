@@ -79,9 +79,13 @@
     return (window.speechSynthesis.getVoices() || []).filter(function (v) { return voiceScore(v) > 0; })
       .sort(function (a, b) { return voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name); });
   }
+  var DEFAULT_VOICE = '*default';
   function pickVoice() {
     if (!SAY.ok) return;
     var vs = voiceList(), want = S.voice || '';
+    // v0.15.2: '*default' names no voice, so the device uses its own default for British English
+    // (on iPhone, possibly the voice ticked in Settings > Accessibility > Spoken Content > Voices)
+    if (want === DEFAULT_VOICE) { SAY.voice = null; return; }
     SAY.voice = vs.filter(function (v) { return v.name === want; })[0] || vs[0] || null;
   }
   if (SAY.ok) {
@@ -313,13 +317,18 @@
           pickVoice();
           var vs = voiceList();
           if (!vs.length) return h('p', { class: 'hint' }, 'No English voices found yet. Close and reopen the app, then look here again.');
-          var sl = h('select', { class: 'tsel wide', 'aria-label': 'Read-aloud voice' }, vs.map(function (v) { return h('option', { value: v.name }, v.name + (/en[-_]GB/i.test(v.lang) ? ' (British)' : ' (' + v.lang + ')')); }));
-          sl.value = SAY.voice ? SAY.voice.name : '';
-          sl.addEventListener('change', function () { S.voice = sl.value; save(); pickVoice(); say('This is ' + sl.value + '. I will read your questions in this voice.', null); });
-          return h('div', { class: 'gap' }, h('p', null, h('b', null, 'Read-aloud voice'), ' (best first; your choice is saved on this device)'), sl);
+          var sl = h('select', { class: 'tsel wide', 'aria-label': 'Read-aloud voice' },
+            [h('option', { value: DEFAULT_VOICE }, 'Device default (British English)')].concat(vs.map(function (v) { return h('option', { value: v.name }, v.name + (/en[-_]GB/i.test(v.lang) ? ' (British)' : ' (' + v.lang + ')')); })));
+          sl.value = S.voice === DEFAULT_VOICE ? DEFAULT_VOICE : SAY.voice ? SAY.voice.name : '';
+          sl.addEventListener('change', function () {
+            S.voice = sl.value; save(); pickVoice();
+            say(sl.value === DEFAULT_VOICE ? 'This is the device default voice. I will read your questions in this voice.' : 'This is ' + sl.value + '. I will read your questions in this voice.', null);
+          });
+          return h('div', { class: 'gap' }, h('p', null, h('b', null, 'Read-aloud voice'), ' (best first; your choice is saved on this device)'), sl,
+            h('p', { class: 'hint' }, 'English voices this device offers the app: ' + vs.length + '. Device default lets the device pick; on iPhone it may use the voice ticked in Settings, Accessibility, Spoken Content, Voices, English (UK).'));
         })() : null,
         SAY.ok ? (function () { var tb = btn('🔊 Test the voice', '', function () { say('Read aloud is working. This is the voice the app will use for questions.', tb); }); return tb; })() : null,
-        h('p', null, SAY.ok ? 'Read aloud: tap the speaker at the top of any question or result to hear it, and tap again to stop. It uses this device\'s own voice' + (SAY.voice ? ' (' + SAY.voice.name + ')' : '') + ' and works offline.' : 'Read aloud: this browser has no built-in voice, so the speaker button is hidden.')),
+        h('p', null, SAY.ok ? 'Read aloud: tap the speaker at the top of any question or result to hear it, and tap again to stop. It uses this device\'s own voice' + (SAY.voice ? ' (' + SAY.voice.name + ')' : S.voice === DEFAULT_VOICE ? ' (device default)' : '') + ' and works offline.' : 'Read aloud: this browser has no built-in voice, so the speaker button is hidden.')),
       backupPanel(),
       unlockPanel(),
       h('div', { class: 'panel' }, h('h2', { class: 'in' }, 'Course material and disclaimer'), notices()),
