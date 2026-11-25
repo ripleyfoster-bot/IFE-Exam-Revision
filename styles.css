@@ -232,3 +232,26 @@ html::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-even
 .saybox { display: block; margin-top: 6px; font-size: 0.9rem; }
 .saybox.on { color: var(--accent); }
 .saynote { background: var(--card); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; font-size: 0.92rem; margin: 0 0 12px; }
+
+/* ---------- read the unit (v0.14.0) ---------- */
+.tile.read { min-height: 0; }
+/* the reader scrolls a lot of text under the bars, so both are solid here */
+#app:has(.rdstick) .top { background: var(--bg); }
+.rdstick { position: sticky; z-index: 4; margin: 0 -16px 12px; padding: 4px 16px 2px; background: var(--bg); }
+.rdnow { display: flex; align-items: center; gap: 12px; padding: 2px 0 8px; }
+.rdwhere { flex: 1; min-width: 0; }
+.rdwhere span { display: block; font-weight: 600; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rdwhere small { display: block; color: var(--mute); font-size: 0.8rem; }
+.rdnow .btn { width: auto; margin: 0; min-height: 42px; padding: 8px 16px; white-space: nowrap; }
+.bar.rdprog { margin: 0 0 8px; }
+.reader { font-size: 1.04rem; line-height: 1.62; }
+.rdunit { padding: 6px 0 22px; }
+.rdunit + .rdunit { border-top: 1px solid var(--line); padding-top: 22px; }
+.rdh { font-size: 1.3rem; line-height: 1.3; margin: 4px 0 12px; }
+.reader h4 { font-size: 1.02rem; margin: 20px 0 6px; }
+.reader p { margin: 0 0 12px; }
+.reader ul { margin: 0 0 14px; padding-left: 1.25em; }
+.reader li { margin-bottom: 7px; }
+.reader .rdon { background: var(--goodbg); border-radius: 6px; box-shadow: 0 0 0 5px var(--goodbg); }
+.rdend { margin-top: 8px; }
+@media (min-width: 900px) { .rdstick { margin: 0 -28px 12px; padding: 4px 28px 2px; } }

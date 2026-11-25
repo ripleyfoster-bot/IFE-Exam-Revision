@@ -46,8 +46,10 @@
   }
   function btn(label, cls, fn) { return h('button', { class: 'btn ' + (cls || ''), type: 'button', onclick: fn }, label); }
   function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  var leaveScreen = null; // clean-up for the screen being left (the reader's scroll watcher)
   function show() {
     sayStop();
+    if (leaveScreen) { leaveScreen(); leaveScreen = null; }
     app.innerHTML = ''; for (var i = 0; i < arguments.length; i++) add(app, arguments[i]);
     var top = app.querySelector('header.top');
     if (top && SAY.ok && app.querySelector('.task, .rev, .hero.res')) top.appendChild(sayBtn());
@@ -99,6 +101,7 @@
     // only cancel when something is playing: on iPhone, cancel() straight before speak() can swallow the new speech
     try { var ss = window.speechSynthesis; if (ss.speaking || ss.pending) ss.cancel(); } catch (e) {}
     sayMark(SAY.btn, false); SAY.btn = null;
+    var lit = app.querySelector('.rdon'); if (lit) lit.classList.remove('rdon'); // reader: paragraph being read
   }
   // a short message under the top bar, so a silent failure is visible
   function sayNote(msg) {
@@ -465,6 +468,7 @@
     function tile(icon, label, sub, fn, cls) {
       return h('button', { class: 'tile ' + (cls || ''), type: 'button', onclick: fn }, h('span', { class: 'ico' }, icon), h('strong', null, label), h('small', null, sub));
     }
+    var canRead = readUnits(m).length > 0;
     show(topbar(m.title, home),
       h('div', { class: 'panel hero' },
         h('div', { class: 'big' }, pct(all.mastery)), h('div', null, 'mastered · ' + all.seen + ' of ' + all.total + ' items seen'),
@@ -473,6 +477,8 @@
       h('h2', null, 'Practise'), chips,
       h('div', { class: 'tiles' },
         tile('★', 'Train me', 'Smart mix of your weak spots', function () { train(m); }, 'wide accent'),
+        canRead ? tile('¶', unitFilter < 0 ? 'Read the module' : 'Read the unit',
+          (unitFilter < 0 ? 'Every unit in turn' : m.units[unitFilter]) + (SAY.ok ? ': read it or listen' : ''), function () { readMode(m); }, 'wide read') : null,
         tile('▤', 'Flash cards', 'Recall, then rate yourself', function () { cardsMode(m); }),
         tile('⇄', 'Match up', 'Pair terms and meanings', function () { matchMode(m); }),
         tile('…', 'Missing word', 'Complete the sentence', function () { fillMode(m); }),
@@ -512,6 +518,118 @@
   function train(m) { runSession(m, 'Train me', pick(m._items.filter(function (x) { return inFilter(x) && (x.type === 'card' || x.type === 'fill' || x.type === 'q'); }), 12), function () { train(m); }); }
   function cardsMode(m) { runSession(m, 'Flash cards', pick(m._items.filter(function (x) { return inFilter(x) && x.type === 'card'; }), 10), function () { cardsMode(m); }); }
   function fillMode(m) { runSession(m, 'Missing word', pick(m._items.filter(function (x) { return inFilter(x) && x.type === 'fill'; }), 10), function () { fillMode(m); }); }
+
+  /* ---------- read the unit (v0.14.0) ----------
+     Plain-words reading notes for each unit (content/reader-m1.js etc.). A supplementary aid only:
+     nothing here is saved, and it never touches progress or mastery.
+     One unit chosen: that unit. "All units": every unit of the module on one scrolling page.
+     Listen reads the same page aloud, paragraph by paragraph and unit after unit, scrolling to
+     follow, and stops at the end of the module (or the unit). */
+  var READ = window.IFE_READER || {};
+  function readUnits(m) {
+    var all = READ[m.id] || [];
+    var us = unitFilter < 0 ? all.map(function (x, u) { return u; }) : [unitFilter];
+    return us.filter(function (u) { return u < m.units.length && all[u] && all[u].length; });
+  }
+  function readBlock(b) {
+    if (typeof b === 'string') return h('p', null, b);
+    if (b.h) return h('h4', null, b.h);
+    if (b.ul) return h('ul', null, b.ul.map(function (t) { return h('li', null, t); }));
+    return null;
+  }
+  function readMode(m) {
+    var us = readUnits(m), one = unitFilter >= 0, back = function () { modScreen(m); };
+    var title = one ? 'Read the unit' : 'Read the module';
+    if (!us.length) { show(topbar(title, back), h('p', { class: 'lead' }, 'No reading notes for this unit yet.')); return; }
+    var label = h('span', null, m.units[us[0]]), count = h('small', null, '');
+    var listen = SAY.ok ? btn('▶ Listen', 'primary', function () { readAloud(listen); }) : null;
+    var now = h('div', { class: 'rdnow' }, h('div', { class: 'rdwhere' }, label, count), listen);
+    var prog = bar(0, 'thin rdprog'), stick = h('div', { class: 'rdstick' }, now, prog);
+    var body = h('div', { class: 'reader' }, us.map(function (u) {
+      return h('section', { class: 'rdunit' }, h('h3', { class: 'rdh' }, m.units[u]), READ[m.id][u].map(readBlock));
+    }));
+    var endText = one ? 'End of ' + m.units[us[0]] + '.' : 'End of ' + m.title + ': all ' + us.length + ' units.';
+    var end = h('div', { class: 'panel rdend' }, h('p', null, h('b', null, endText)),
+      h('p', { class: 'hint' }, 'Reading and listening are a revision aid only. They do not count towards your progress.'),
+      btn('Back to module', 'primary', back));
+    show(topbar(title, back), stick,
+      h('p', { class: 'hint' }, 'Revision notes in plain words, written from the ASFP course pack. Always check the official course material.' +
+        (SAY.ok ? ' Tap Listen to hear it; it starts from the top of what is on screen.' : '')),
+      body, end);
+
+    var top = app.querySelector('header.top');
+    function place() { stick.style.top = (top ? top.offsetHeight : 0) + 'px'; }
+    // which unit is under the sticky bar, and how far through the page we are
+    var secs = body.querySelectorAll('.rdunit'), raf = 0;
+    function track() {
+      raf = 0;
+      var edge = stick.getBoundingClientRect().bottom + 8, k = 0;
+      for (var i = 0; i < secs.length; i++) if (secs[i].getBoundingClientRect().top <= edge) k = i;
+      label.textContent = m.units[us[k]];
+      count.textContent = us.length > 1 ? (k + 1) + ' of ' + us.length + ' in ' + m.title : '';
+      var max = document.documentElement.scrollHeight - window.innerHeight;
+      prog.firstChild.style.width = (max > 0 ? Math.min(100, Math.round(window.scrollY / max * 100)) : 100) + '%';
+    }
+    function onScroll() { if (!raf) raf = requestAnimationFrame(track); }
+    function onResize() { place(); onScroll(); }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    leaveScreen = function () { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onResize); if (raf) cancelAnimationFrame(raf); };
+    place(); track();
+
+    // read aloud: every heading, paragraph and bullet in page order
+    function readAloud(b) {
+      if (!SAY.ok) return;
+      var wasMine = SAY.on && SAY.btn === b;
+      sayStop(); sayNote('');
+      if (wasMine) return; // second tap stops
+      var els = body.querySelectorAll('.rdh, h4, p, li');
+      if (!els.length) return;
+      // start from the first block not hidden under the sticky bar (the top of the page on first open)
+      var edge = stick.getBoundingClientRect().bottom + 4, start = 0;
+      if (window.scrollY > 10) for (var i = 0; i < els.length; i++) if (els[i].getBoundingClientRect().bottom > edge) { start = i; break; }
+      var tok = SAY.tok, started = false, ss = window.speechSynthesis;
+      SAY.on = true; SAY.btn = b; sayMark(b, true);
+      function done(finished) {
+        if (tok !== SAY.tok) return;
+        var lit = body.querySelector('.rdon'); if (lit) lit.classList.remove('rdon');
+        SAY.on = false; sayMark(SAY.btn, false); SAY.btn = null;
+        if (finished) sayNote(one ? 'Finished: that is the whole of ' + m.units[us[0]] + '.' : 'Finished: you have heard all ' + us.length + ' units of ' + m.title + '.');
+      }
+      function para(k, useVoice) {
+        if (tok !== SAY.tok) return;
+        if (k >= els.length) return done(true);
+        var el = els[k], lit = body.querySelector('.rdon');
+        if (lit) lit.classList.remove('rdon');
+        el.classList.add('rdon');
+        var r = el.getBoundingClientRect(), e2 = stick.getBoundingClientRect().bottom;
+        if (r.top < e2 || r.bottom > window.innerHeight - 20) { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (x) { el.scrollIntoView(); } }
+        sent(k, saySplit(sayClean(sayEnd(el.textContent))), 0, useVoice);
+      }
+      function sent(k, parts, i, useVoice) {
+        if (tok !== SAY.tok) return;
+        if (i >= parts.length) return para(k + 1, useVoice);
+        var u = new window.SpeechSynthesisUtterance(parts[i]);
+        u.lang = 'en-GB'; u.rate = 1; u.pitch = 1; u.volume = 1;
+        if (useVoice && SAY.voice) u.voice = SAY.voice;
+        u.onstart = function () { started = true; };
+        u.onend = function () { if (tok === SAY.tok) sent(k, parts, i + 1, useVoice); };
+        u.onerror = function (e) {
+          if (tok !== SAY.tok) return;
+          var why = e && e.error;
+          if (why === 'interrupted' || why === 'canceled') return done(false);
+          if (!started && useVoice && SAY.voice) return sent(k, parts, i, false); // chosen voice failed: device default
+          done(false); sayNote('Read aloud stopped (' + (why || 'unknown error') + ').');
+        };
+        ss.speak(u);
+        if (ss.paused) ss.resume();
+      }
+      try { para(start, true); } catch (x) { done(false); sayNote('Read aloud could not start: ' + x.message); return; }
+      setTimeout(function () {
+        if (tok === SAY.tok && !started) sayNote('No sound yet? On iPhone and iPad, read aloud is silent when the phone is on Silent: turn Silent off, turn the volume up and tap Listen again.');
+      }, 2500);
+    }
+  }
 
   /* ---------- task renderers ---------- */
   function feedback(m, ok, text, t) {
