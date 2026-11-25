@@ -469,6 +469,15 @@
       return h('button', { class: 'tile ' + (cls || ''), type: 'button', onclick: fn }, h('span', { class: 'ico' }, icon), h('strong', null, label), h('small', null, sub));
     }
     var canRead = readUnits(m).length > 0;
+    function readTileSub(m) {
+      var rr = (S.read || {})[m.id] || {};
+      if (unitFilter >= 0) {
+        var r = rr[unitFilter], f = readPct(r);
+        return m.units[unitFilter] + (r && r.done ? ': finished' : f > 0 ? ': ' + pct(f) + ' read, carry on' : SAY.ok ? ': read it or listen' : '');
+      }
+      var any = Object.keys(rr).some(function (k) { return k !== 'last' && rr[k] && rr[k].best > 0; });
+      return 'Every unit in turn' + (any ? ': pick up where you left off' : SAY.ok ? ': read it or listen' : '');
+    }
     show(topbar(m.title, home),
       h('div', { class: 'panel hero' },
         h('div', { class: 'big' }, pct(all.mastery)), h('div', null, 'mastered · ' + all.seen + ' of ' + all.total + ' items seen'),
@@ -478,7 +487,7 @@
       h('div', { class: 'tiles' },
         tile('★', 'Train me', 'Smart mix of your weak spots', function () { train(m); }, 'wide accent'),
         canRead ? tile('¶', unitFilter < 0 ? 'Read the module' : 'Read the unit',
-          (unitFilter < 0 ? 'Every unit in turn' : m.units[unitFilter]) + (SAY.ok ? ': read it or listen' : ''), function () { readMode(m); }, 'wide read') : null,
+          readTileSub(m), function () { readMode(m); }, 'wide read') : null,
         tile('▤', 'Flash cards', 'Recall, then rate yourself', function () { cardsMode(m); }),
         tile('⇄', 'Match up', 'Pair terms and meanings', function () { matchMode(m); }),
         tile('…', 'Missing word', 'Complete the sentence', function () { fillMode(m); }),
@@ -531,6 +540,11 @@
     var us = unitFilter < 0 ? all.map(function (x, u) { return u; }) : [unitFilter];
     return us.filter(function (u) { return u < m.units.length && all[u] && all[u].length; });
   }
+  // reading place (v0.15.0): S.read[module id][unit] = { p: block reached, n: blocks in unit, best: furthest, done }
+  // plus S.read[id].last = unit read most recently. Kept with progress so Save and Import carry it,
+  // but it never feeds mastery.
+  function readRec(m) { S.read = S.read || {}; return (S.read[m.id] = S.read[m.id] || {}); }
+  function readPct(r) { return !r || !r.n ? 0 : r.done ? 1 : !r.best ? 0 : Math.min(1, (r.best + 1) / r.n); } // still on the first block = not started
   function readBlock(b) {
     if (typeof b === 'string') return h('p', null, b);
     if (b.h) return h('h4', null, b.h);
@@ -550,7 +564,7 @@
     }));
     var endText = one ? 'End of ' + m.units[us[0]] + '.' : 'End of ' + m.title + ': all ' + us.length + ' units.';
     var end = h('div', { class: 'panel rdend' }, h('p', null, h('b', null, endText)),
-      h('p', { class: 'hint' }, 'Reading and listening are a revision aid only. They do not count towards your progress.'),
+      h('p', { class: 'hint' }, 'Your reading place is saved for each unit. Reading and listening do not count towards your mastery or exam scores.'),
       btn('Back to module', 'primary', back));
     show(topbar(title, back), stick,
       h('p', { class: 'hint' }, 'Revision notes in plain words, written from the ASFP course pack. Always check the official course material.' +
@@ -561,21 +575,73 @@
     function place() { stick.style.top = (top ? top.offsetHeight : 0) + 'px'; }
     // which unit is under the sticky bar, and how far through the page we are
     var secs = body.querySelectorAll('.rdunit'), raf = 0;
+    var REC = readRec(m), recording = false, saveT = 0;
+    var unitEls = Array.prototype.map.call(secs, function (sec) { return sec.querySelectorAll('.rdh, h4, p, li'); });
+    function flush() { if (saveT) { clearTimeout(saveT); saveT = 0; save(); } }
+    // remember block idx of section k as the place to come back to
+    function mark(k, idx) {
+      if (!recording) return;
+      var u = us[k], n = unitEls[k].length, r = REC[u] = REC[u] || { p: 0, n: n, best: 0, done: false };
+      r.p = idx; r.n = n; r.best = Math.max(r.best || 0, idx); if (idx >= n - 1) r.done = true;
+      REC.last = u;
+      if (saveT) clearTimeout(saveT);
+      saveT = setTimeout(function () { saveT = 0; save(); }, 800);
+    }
+    function stuckEdge() { return (top ? top.getBoundingClientRect().height : 0) + stick.getBoundingClientRect().height; }
     function track() {
       raf = 0;
       var edge = stick.getBoundingClientRect().bottom + 8, k = 0;
       for (var i = 0; i < secs.length; i++) if (secs[i].getBoundingClientRect().top <= edge) k = i;
+      var max = document.documentElement.scrollHeight - window.innerHeight, atEnd = max > 0 && window.scrollY >= max - 4;
+      if (!SAY.on) { // while listening, the voice sets the place
+        if (atEnd) mark(secs.length - 1, unitEls[secs.length - 1].length - 1);
+        else { var els = unitEls[k]; for (var j = 0; j < els.length; j++) if (els[j].getBoundingClientRect().bottom > edge) { mark(k, j); break; } }
+      }
       label.textContent = m.units[us[k]];
-      count.textContent = us.length > 1 ? (k + 1) + ' of ' + us.length + ' in ' + m.title : '';
-      var max = document.documentElement.scrollHeight - window.innerHeight;
+      var r = REC[us[k]], f = readPct(r);
+      count.textContent = (us.length > 1 ? (k + 1) + ' of ' + us.length + ' in ' + m.title : '') +
+        (r && r.done ? (us.length > 1 ? ' · ' : '') + 'finished' : f > 0 ? (us.length > 1 ? ' · ' : '') + pct(f) + ' read' : '');
       prog.firstChild.style.width = (max > 0 ? Math.min(100, Math.round(window.scrollY / max * 100)) : 100) + '%';
+    }
+    // scroll so block idx of section k sits just under the sticky bars
+    function goTo(k, idx) {
+      var el = unitEls[k][idx] || secs[k];
+      window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.scrollY - stuckEdge() - 10));
+    }
+    function resumeIdx(u) { var r = REC[u]; return !r ? 0 : r.done && r.p >= r.n - 1 ? 0 : Math.min(r.p || 0, (r.n || 1) - 1); }
+    function begin(k, idx) {
+      var bg = app.querySelector('.rdmodal'); if (bg) bg.remove();
+      goTo(k, idx); recording = true; track();
+    }
+    // the dialogue: which unit to resume (All units), or resume / start again (one unit)
+    function askResume() {
+      var rows, msg;
+      if (one) {
+        var u = us[0], r = REC[u], idx = resumeIdx(u);
+        if (!r || idx === 0) return begin(0, 0);
+        var wl = unitEls[0][idx].textContent.split(' '), words = wl.length > 10 ? wl.slice(0, 9).join(' ').replace(/[,;:.]$/, '') + '\u2026' : wl.join(' ');
+        msg = h('p', null, 'You stopped ' + pct(readPct(r)) + ' of the way through, at: \u201c' + words + '\u201d');
+        rows = [btn('Resume where I left off', 'primary', function () { begin(0, idx); }), btn('Start from the beginning', '', function () { begin(0, 0); })];
+      } else {
+        var anySaved = us.some(function (u) { return REC[u] && REC[u].best > 0; });
+        if (!anySaved) return begin(0, 0);
+        msg = h('p', null, 'Which unit would you like to resume?');
+        rows = us.map(function (u, k) {
+          var r = REC[u], f = readPct(r), st = !r || !f ? 'Not started' : r.done ? 'Finished: starts again from the top' : pct(f) + ' read: resumes where you stopped';
+          return h('button', { class: 'rdpick' + (REC.last === u ? ' last' : ''), type: 'button', onclick: function () { begin(k, resumeIdx(u)); } },
+            h('strong', null, m.units[u]), h('small', null, st + (REC.last === u ? ' · last read' : '')));
+        }).concat([btn('Start from the beginning of the module', '', function () { begin(0, 0); })]);
+      }
+      var box = h('div', { class: 'rdbox', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Resume reading' }, h('h3', null, one ? 'Carry on reading?' : 'Pick up where you left off'), msg, rows);
+      app.appendChild(h('div', { class: 'rdmodal' }, box));
     }
     function onScroll() { if (!raf) raf = requestAnimationFrame(track); }
     function onResize() { place(); onScroll(); }
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize);
-    leaveScreen = function () { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onResize); if (raf) cancelAnimationFrame(raf); };
-    place(); track();
+    leaveScreen = function () { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onResize); if (raf) cancelAnimationFrame(raf); window.removeEventListener('pagehide', flush); flush(); };
+    window.addEventListener('pagehide', flush);
+    place(); track(); askResume();
 
     // read aloud: every heading, paragraph and bullet in page order
     function readAloud(b) {
@@ -591,6 +657,7 @@
       var tok = SAY.tok, started = false, ss = window.speechSynthesis;
       SAY.on = true; SAY.btn = b; sayMark(b, true);
       function done(finished) {
+        flush();
         if (tok !== SAY.tok) return;
         var lit = body.querySelector('.rdon'); if (lit) lit.classList.remove('rdon');
         SAY.on = false; sayMark(SAY.btn, false); SAY.btn = null;
@@ -600,6 +667,7 @@
         if (tok !== SAY.tok) return;
         if (k >= els.length) return done(true);
         var el = els[k], lit = body.querySelector('.rdon');
+        for (var q = 0; q < unitEls.length; q++) { var at = Array.prototype.indexOf.call(unitEls[q], el); if (at >= 0) { mark(q, at); break; } }
         if (lit) lit.classList.remove('rdon');
         el.classList.add('rdon');
         var r = el.getBoundingClientRect(), e2 = stick.getBoundingClientRect().bottom;
