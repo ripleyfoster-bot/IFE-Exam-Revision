@@ -13,6 +13,7 @@ Adaptive revision app. Version 0.3.2 contains Modules One, Two and Three. No AI 
 | `content/module1.js` | All Module One content |
 | `content/module2.js` | All Module Two content |
 | `content/module3.js` | All Module Three content (no Introduction pack: `noIntro: true`) |
+| `content/reader-m1.js`, `reader-m2.js`, `reader-m3.js` | Read the unit: plain-words reading notes per unit, one array per unit in unit order. Not tracked as progress |
 | `sw.js` | Offline cache |
 | `manifest.webmanifest`, `icons/` | Install-to-home-screen details |
 
@@ -41,3 +42,9 @@ Practice picks weak and unseen items more often. A unit shows green at 85% maste
 `config.js` has an `ai` block. When a proxy exists, set `enabled: true` and `endpoint` to its address.
 The app then shows an "Explain this" button after wrong answers and posts the item to that address, expecting `{ "text": "..." }` back.
 Never put an AI provider key in these files.
+
+## Read the unit (v0.14.0)
+
+Under Train me on each module screen. With one unit chosen it opens that unit; with All units it opens every unit on one scrolling page, and the bar at the top shows which unit you are in. Listen reads the page aloud with the device's own voice, paragraph by paragraph, scrolling to follow, and stops at the end of the unit or module. Nothing here changes progress or mastery.
+
+The notes are written in plain words from the ASFP resource packs, not copied. To add a module, create `content/reader-mN.js` with `window.IFE_READER.mN = [ ... ]` (one array per unit), add a script line in `index.html` and the file to `FILES` in `sw.js`.
