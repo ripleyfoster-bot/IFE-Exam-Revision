@@ -48,3 +48,13 @@ Never put an AI provider key in these files.
 Under Train me on each module screen. With one unit chosen it opens that unit; with All units it opens every unit on one scrolling page, and the bar at the top shows which unit you are in. Listen reads the page aloud with the device's own voice, paragraph by paragraph, scrolling to follow, and stops at the end of the unit or module. Nothing here changes progress or mastery.
 
 The notes are written in plain words from the ASFP resource packs, not copied. To add a module, create `content/reader-mN.js` with `window.IFE_READER.mN = [ ... ]` (one array per unit), add a script line in `index.html` and the file to `FILES` in `sw.js`.
+
+## v0.16.0 (26 Nov 2026)
+
+Kept in step with the learning engine 1.7.0 (ripleyfoster-bot/xrf-learning-engine):
+- Exams are 65 questions (module final exams and the Day 7 mock), pass mark 45 of 65 (69%), target 85%.
+- Every module exam and countdown paper keeps its date, time taken, score and correct answers by unit.
+- Module screen: Study and Exams tabs. Exams has the final exam, a progress chart and a league table that opens to weak units.
+- Revision: Countdown and Results tabs. Exam soon? is also at the bottom of the Countdown tab.
+- How to use: shown once on first opening (and once to existing users after this update), then from About.
+

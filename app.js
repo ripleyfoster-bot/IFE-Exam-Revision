@@ -292,12 +292,12 @@
   function home() {
     var list = MODS.map(function (m) {
       var st = stats(m._items);
-      return h('button', { class: 'modcard', type: 'button', onclick: function () { unitFilter = -1; modScreen(m); } },
+      return h('button', { class: 'modcard', type: 'button', onclick: function () { unitFilter = -1; modTab = 'study'; modScreen(m); } },
         h('strong', null, m.title), h('span', null, m.subtitle), bar(st.mastery), h('small', null, pct(st.mastery) + ' mastered'));
     });
     if (RV) {
       var rs = rvState(), dn = rvDayNow();
-      list.push(h('button', { class: 'modcard rvcard', type: 'button', onclick: rvHome },
+      list.push(h('button', { class: 'modcard rvcard', type: 'button', onclick: function () { rvTab = 'days'; rvHome(); } },
         h('strong', null, RV.title), h('span', null, RV.subtitle + ': every module, in the IFE exam formats'),
         bar(rs.unlocked ? 1 : rs.start ? Math.min(7, dn) / 7 : 0), h('small', null, rs.unlocked ? 'All 7 days unlocked' : rs.start ? (dn > 7 ? 'All 7 days open' : 'Day ' + dn + ' of 7') : 'Not started')));
     }
@@ -308,6 +308,7 @@
   function about() {
     var u = S.user || {};
     show(topbar('About', home),
+      btn('How to use this app', 'primary', function () { howTo(about); }),
       h('div', { class: 'panel' },
         u.name ? h('p', null, h('b', null, u.name), u.company ? ', ' + u.company : '', u.exam ? ' · exam ' + u.exam.split('-').reverse().join('/') : '') : null,
         btn('Change my details', '', function () { welcome(true); }),
@@ -340,11 +341,11 @@
   }
 
   /* ---------- countdown override: open all 7 Revision days at once (exam less than 7 days away) ---------- */
-  function unlockPanel() {
+  function unlockPanel(redraw) {
     if (!RV) return null;
     var r = rvState();
     var tick = h('input', { type: 'checkbox', id: 'rvunlock' }); tick.checked = !!r.unlocked;
-    tick.addEventListener('change', function () { r.unlocked = tick.checked; save(); msg.textContent = tick.checked ? 'Every Revision day and the full mock are now open.' : 'Back to one day at a time from your start date. Scores are kept.'; });
+    tick.addEventListener('change', function () { r.unlocked = tick.checked; save(); msg.textContent = tick.checked ? 'Every Revision day and the full mock are now open.' : 'Back to one day at a time from your start date. Scores are kept.'; if (redraw) redraw(); });
     var msg = h('p', { class: 'hint gap', role: 'status' });
     return h('div', { class: 'panel' }, h('h2', { class: 'in' }, 'Exam soon?'),
       h('p', null, 'The Revision countdown opens one day at a time over 7 days. If your exam is sooner, release it to open every day and the full mock now.'),
@@ -426,7 +427,7 @@
     if (u.agreed) tick.checked = true;
     var go = btn(editing ? 'Save' : 'Agree and continue', 'primary', function () {
       S.user = { name: name.value.trim(), company: comp.value.trim(), exam: exam.value || '', agreed: u.agreed || new Date().toISOString() };
-      save(); home();
+      save(); editing ? home() : firstHelp();
     });
     function check() { go.disabled = !(name.value.trim() && comp.value.trim() && tick.checked); }
     [name, comp, exam].forEach(function (x) { x.addEventListener('input', check); });
@@ -449,13 +450,14 @@
     show(h('div', { class: 'brand cover' }, logo(88), h('h1', null, 'IFE Level 3 Revision'),
         h('p', { class: 'hi' }, 'Welcome back, ' + u.name), h('p', null, u.company),
         line ? h('div', { class: 'count' }, line) : null),
-      btn('Continue', 'primary', home),
+      btn('Continue', 'primary', firstHelp),
       h('button', { class: 'link center', type: 'button', onclick: function () { welcome(true); } }, 'Change my details'),
       h('p', { class: 'copy' }, 'Course material owned by the ASFP, www.asfp.org.uk. Always check the official course material.'),
       h('p', { class: 'copy' }, COPY));
   }
 
   /* ---------- module screen ---------- */
+  var modTab = 'study', rvTab = 'days';
   function modScreen(m) {
     var all = stats(m._items);
     var units = m.units.map(function (name, u) { return { u: u, name: name, st: stats(unitItems(m, u)) }; });
@@ -492,6 +494,8 @@
         h('div', { class: 'big' }, pct(all.mastery)), h('div', null, 'mastered · ' + all.seen + ' of ' + all.total + ' items seen'),
         h('div', { class: 'ready ' + (ready ? 'yes' : '') }, ready ? 'Every unit is at 85% or above. Try the final exam.' : 'Target: every unit at 85% before the final exam.'),
         ex.length ? h('div', { class: 'best' }, 'Best exam score: ' + pct(best) + ' (' + ex.length + ' attempt' + (ex.length > 1 ? 's' : '') + ')') : null),
+      tabs([['study', 'Study'], ['exams', 'Exams' + (ex.length ? ' (' + ex.length + ')' : '')]], modTab, function (k) { modTab = k; modScreen(m); }),
+      modTab === 'exams' ? modExams(m) : [
       h('h2', null, 'Practise'), chips,
       h('div', { class: 'tiles' },
         tile('★', 'Train me', 'Smart mix of your weak spots', function () { train(m); }, 'wide accent'),
@@ -502,9 +506,216 @@
         tile('…', 'Missing word', 'Complete the sentence', function () { fillMode(m); }),
         tile('◎', 'Label the diagram', 'Tap labels into place', function () { diagramList(m); })),
       h('h2', null, 'Progress by unit'), rows,
-      h('h2', null, 'Final exam'),
-      h('div', { class: 'panel' }, h('p', null, CFG.examLength + ' questions across the whole module. Pass mark ' + pct(CFG.passMark) + '. No feedback until the end.'),
-        btn('Start final exam', 'primary', function () { exam(m); })));
+      h('div', { class: 'panel gotoex' }, h('p', null, 'Final exam, past scores and your progress chart are on the Exams tab.'),
+        btn('Go to Exams', '', function () { modTab = 'exams'; modScreen(m); window.scrollTo(0, 0); }))]);
+  }
+  // Exams tab (v0.16.0): start the final exam, chart of scores, league table of attempts
+  function modExams(m) {
+    var ex = S.exams[m.id] || [];
+    return [h('div', { class: 'panel' }, h('h2', { class: 'in' }, 'Final exam'),
+        h('p', null, CFG.examLength + ' questions across the whole module. ' + passLine(CFG.examLength, true) + '. No feedback until the end.'),
+        btn('Start final exam', 'primary', function () { exam(m); })),
+      examsView({ recs: ex.map(function (e) { return { d: e.d, s: e.s, n: e.n, t: e.t, u: e.u }; }),
+        empty: 'No final exams yet. Your scores, time taken and weak units will appear here after your first attempt.',
+        units: function (rec) {
+          return rec.u ? Object.keys(rec.u).map(function (u) { return { name: m.units[u], s: rec.u[u][0], n: rec.u[u][1], go: function () { unitFilter = +u; modTab = 'study'; train(m); } }; }) : null;
+        } })];
+  }
+
+  /* ---------- v0.16.0: ported from the learning engine 1.7.0 (same code, IFE values) ---------- */
+  var LBL = { intro: 'Intro', unit: 'Unit' }, TXT = { formatsRevision: 'the IFE online formats' };
+  var ND = 7, MOCKDAY = { n: 7 };
+  function numWord(n) { return ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][n] || String(n); }
+  /* ---------- exam scoring, results, league tables and chart ----------
+     Two lines matter. The exam pass mark comes from course.js examPass (marks out of examLength, e.g. 45 of 65);
+     without it the pass mark is passMark, as before. passMark (e.g. 85%) is the target: the score to reach in
+     practice before the real exam. One mark per question: a multiple-answer question scores only when every part is right. */
+  function passFrac() { return CFG.examPass ? CFG.examPass / CFG.examLength : CFG.passMark; }
+  function needFor(n) { return Math.ceil(passFrac() * n - 1e-9); }
+  function hasTarget() { return !!CFG.examPass && CFG.passMark > passFrac(); }
+  function passLine(n, long) {
+    return (long ? 'Pass mark ' : 'pass mark ') + needFor(n) + ' of ' + n + ' (' + pct(needFor(n) / n) + ')' + (hasTarget() ? (long ? '. Aim for ' : ' · target ') + pct(CFG.passMark) + (long ? ' before the real exam' : '') : '');
+  }
+  function grade(s, n) { return hasTarget() && s / n >= CFG.passMark ? 'ready' : s >= needFor(n) ? 'pass' : 'below'; }
+  var GRADE = { ready: 'Exam ready', pass: 'Pass', below: 'Below pass' };
+  function gradeText(s, n, weak) {
+    var g = grade(s, n);
+    if (g === 'ready') return 'Exam ready: at or above the ' + pct(CFG.passMark) + ' target.';
+    if (g === 'pass') return 'Pass.' + (hasTarget() ? ' Keep going: aim for ' + pct(CFG.passMark) + ' before the real exam.' : '') + (weak ? ' ' + weak : '');
+    return 'Not yet.' + (weak ? ' ' + weak : '');
+  }
+  function resultHero(s, n, tip) {
+    var g = grade(s, n);
+    return h('div', { class: 'panel hero res' }, h('div', { class: 'big' }, s + ' / ' + n), h('div', null, pct(s / n) + ' · ' + passLine(n)),
+      h('div', { class: 'ready ' + (g !== 'below' ? 'yes' : '') }, gradeText(s, n, g === 'ready' ? '' : tip)));
+  }
+  // countdown items: module unit "m1.3"; revision-only items use the module item named in src ("m1.c44")
+  function rvUnitKey(c) {
+    if (c.m) return c.m.id + '.' + c.u;
+    var mt = /^([a-z0-9]+)\.([cfq])(\d+)$/.exec(c.src || ''), m = mt && MODS.filter(function (x) { return x.id === mt[1]; })[0];
+    if (m) { var it = (mt[2] === 'c' ? m.cards : mt[2] === 'f' ? m.fills : m.questions)[+mt[3]]; if (it) return m.id + '.' + (mt[2] === 'q' ? it.u : it[0]); }
+    return 'rv';
+  }
+  function fmtTime(t) {
+    if (t == null) return '–';
+    var hh = Math.floor(t / 3600), mm = Math.floor(t / 60) % 60, ss = t % 60;
+    return hh ? hh + 'h ' + ('0' + mm).slice(-2) + 'm' : mm + ':' + ('0' + ss).slice(-2);
+  }
+  function fmtDate(d, withTime) {
+    var x = new Date(d), p = function (v) { return ('0' + v).slice(-2); };
+    return p(x.getDate()) + '/' + p(x.getMonth() + 1) + '/' + String(x.getFullYear()).slice(-2) + (withTime ? ' ' + p(x.getHours()) + ':' + p(x.getMinutes()) : '');
+  }
+  function tabs(list, cur, fn) {
+    return h('div', { class: 'tabs', role: 'tablist' }, list.map(function (t) {
+      return h('button', { class: 'tab' + (t[0] === cur ? ' on' : ''), type: 'button', role: 'tab', 'aria-selected': t[0] === cur ? 'true' : 'false', onclick: function () { if (t[0] !== cur) fn(t[0]); } }, t[1]);
+    }));
+  }
+  // o: { recs: [{ d, s, n, t, u, k }], label(rec), units(rec) -> [{ name, s, n, go }], empty, mockKey }
+  var lgSort = 'best';
+  function examsView(o) {
+    var recs = o.recs.slice().sort(function (a, b) { return a.d - b.d; });
+    if (!recs.length) return [h('p', { class: 'hint gap' }, o.empty)];
+    var best = 0, last = recs[recs.length - 1]; recs.forEach(function (x) { best = Math.max(best, x.s / x.n); });
+    var out = [h('div', { class: 'lgsum' },
+      h('div', null, h('b', null, String(recs.length)), h('small', null, recs.length > 1 ? 'attempts' : 'attempt')),
+      h('div', null, h('b', null, pct(best)), h('small', null, 'best')),
+      h('div', null, h('b', null, pct(last.s / last.n)), h('small', null, 'latest')))];
+    out.push(h('h2', null, 'Progress'), scoreChart(recs, o));
+    var rows = recs.map(function (x, i) { return { x: x, n: i + 1 }; });
+    rows.sort(lgSort === 'best' ? function (a, b) { return b.x.s / b.x.n - a.x.s / a.x.n || (a.x.t || 1e9) - (b.x.t || 1e9) || b.x.d - a.x.d; } : function (a, b) { return b.x.d - a.x.d; });
+    var tbody = h('div', { class: 'lgrows' });
+    function draw() {
+      tbody.innerHTML = '';
+      rows.forEach(function (r, k) {
+        var x = r.x, g = grade(x.s, x.n), us = o.units(x);
+        var det = h('details', { class: 'lgrow ' + g },
+          h('summary', null,
+            h('span', { class: 'lgrank' }, lgSort === 'best' ? String(k + 1) : '#' + r.n),
+            h('span', { class: 'lgwhen' }, h('b', null, (o.label ? o.label(x) + ' · ' : '') + fmtDate(x.d)), h('small', null, fmtDate(x.d, true).slice(9) + ' · ' + fmtTime(x.t))),
+            h('span', { class: 'lgpct' }, h('b', null, pct(x.s / x.n)), h('small', null, x.s + '/' + x.n)),
+            h('span', { class: 'lgtag ' + g }, GRADE[g])),
+          us ? [h('p', { class: 'hint' }, 'Correct answers by unit in this attempt, weakest first.' + (us.some(function (u) { return u.go; }) ? ' Tap Train to practise a unit.' : ''))]
+            .concat(us.sort(function (a, b) { return a.s / a.n - b.s / b.n || b.n - a.n; }).map(function (u) {
+              var f = u.s / u.n;
+              return h('div', { class: 'urow lgu' }, h('div', { class: 'uname' }, u.name, h('b', null, u.s + ' / ' + u.n)), bar(f, f >= CFG.passMark ? 'good' : f < 0.5 ? 'weak' : ''),
+                u.go && f < CFG.passMark ? h('button', { class: 'link lgtrain', type: 'button', onclick: u.go }, 'Train this unit') : null);
+            }))
+            : h('p', { class: 'hint' }, 'No unit breakdown: this attempt was sat before version 0.16.0.'));
+        tbody.appendChild(det);
+      });
+    }
+    draw();
+    out.push(h('div', { class: 'lghead' }, h('h2', null, 'League table'),
+      h('div', { class: 'seg' }, [['best', 'Best first'], ['new', 'Newest first']].map(function (s) {
+        return h('button', { class: 'chip' + (lgSort === s[0] ? ' on' : ''), type: 'button', onclick: function (e) {
+          lgSort = s[0]; rows.sort(lgSort === 'best' ? function (a, b) { return b.x.s / b.x.n - a.x.s / a.x.n || (a.x.t || 1e9) - (b.x.t || 1e9) || b.x.d - a.x.d; } : function (a, b) { return b.x.d - a.x.d; });
+          [].forEach.call(e.target.parentNode.children, function (c) { c.classList.toggle('on', c === e.target); }); draw();
+        } }, s[1]);
+      }))), h('p', { class: 'hint' }, 'Tap an attempt to see where you lost marks.'), tbody);
+    return out;
+  }
+  // Score (%) for each attempt in date order, with the pass mark and target as reference lines.
+  // One series (accent); mocks get a square marker and a legend entry. Tap or hover a point for its details.
+  function scoreChart(recs, o) {
+    var NS = 'http://www.w3.org/2000/svg', W = 340, H = 190, L = 34, R = 66, T = 10, B = 26;
+    function s(tag, a, kids) { var e = document.createElementNS(NS, tag); for (var k in a) e.setAttribute(k, a[k]); (kids || []).forEach(function (c) { e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+    var n = recs.length, pw = W - L - R, ph = H - T - B;
+    function X(i) { return L + (n === 1 ? pw / 2 : i * pw / (n - 1)); }
+    function Y(f) { return T + (1 - f) * ph; }
+    var g = s('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'chart', role: 'img', 'aria-label': 'Exam scores over time: ' + recs.map(function (x) { return fmtDate(x.d) + ' ' + pct(x.s / x.n); }).join(', ') });
+    [0, 0.25, 0.5, 0.75, 1].forEach(function (f) {
+      g.appendChild(s('line', { x1: L, x2: W - R, y1: Y(f), y2: Y(f), class: 'cgrid' }));
+      g.appendChild(s('text', { x: L - 6, y: Y(f) + 4, class: 'ctx', 'text-anchor': 'end' }, [Math.round(f * 100) + '%']));
+    });
+    var refs = [[passFrac(), 'Pass ' + pct(passFrac())]];
+    if (hasTarget()) refs.push([CFG.passMark, 'Target ' + pct(CFG.passMark)]);
+    refs.forEach(function (rf, k) {
+      g.appendChild(s('line', { x1: L, x2: W - R, y1: Y(rf[0]), y2: Y(rf[0]), class: 'cref' + (k ? ' tgt' : '') }));
+      g.appendChild(s('text', { x: W - R + 6, y: Y(rf[0]) + (k ? -2 : 10), class: 'ctx' }, [rf[1]]));
+    });
+    // date labels: first and last (and middle when there is room)
+    var lab = n === 1 ? [0] : n < 5 ? recs.map(function (x, i) { return i; }) : [0, Math.floor((n - 1) / 2), n - 1];
+    lab.forEach(function (i) { g.appendChild(s('text', { x: X(i), y: H - 8, class: 'ctx', 'text-anchor': n === 1 ? 'middle' : i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle' }, [fmtDate(recs[i].d)])); });
+    if (n > 1) g.appendChild(s('polyline', { points: recs.map(function (x, i) { return X(i) + ',' + Y(x.s / x.n); }).join(' '), class: 'cline' }));
+    var tip = h('p', { class: 'ctip', role: 'status' }, 'Tap a point for its details.'), sel = null;
+    var hasMock = o.mockKey && recs.some(function (x) { return x.k === 'mock'; }), hasDay = o.mockKey && recs.some(function (x) { return x.k !== 'mock'; });
+    recs.forEach(function (x, i) {
+      var cx = X(i), cy = Y(x.s / x.n), mk = o.mockKey && x.k === 'mock';
+      var dot = mk ? s('rect', { x: cx - 5, y: cy - 5, width: 10, height: 10, rx: 2, class: 'cdot' }) : s('circle', { cx: cx, cy: cy, r: 4.5, class: 'cdot' });
+      var hit = s('circle', { cx: cx, cy: cy, r: Math.max(10, Math.min(16, pw / n / 2)), class: 'chit', tabindex: '0' });
+      function pickIt() {
+        if (sel) sel.classList.remove('on'); sel = dot; dot.classList.add('on');
+        tip.textContent = (o.label ? o.label(x) + ' · ' : '') + fmtDate(x.d, true) + ' · ' + pct(x.s / x.n) + ' (' + x.s + ' of ' + x.n + ') · ' + GRADE[grade(x.s, x.n)] + (x.t != null ? ' · ' + fmtTime(x.t) : '');
+      }
+      hit.addEventListener('click', pickIt); hit.addEventListener('mouseenter', pickIt); hit.addEventListener('focus', pickIt);
+      g.appendChild(dot); g.appendChild(hit);
+    });
+    var key = hasMock && hasDay ? h('div', { class: 'ckey' }, h('span', null, h('i', { class: 'kdot' }), 'Daily paper'), h('span', null, h('i', { class: 'kdot sq' }), 'Mock exam')) : null;
+    return h('div', { class: 'panel cwrap' }, key, g, tip);
+  }
+
+  /* ---------- How to use (v0.16.0): shown once on first opening, then from About ---------- */
+  function firstHelp() {
+    if (!S.helpSeen) { S.helpSeen = new Date().toISOString(); save(); return howTo(home, true); }
+    home();
+  }
+  function howTo(back, first) {
+    var anyRead = MODS.some(function (m) { return readUnits(m).length > 0; });
+    function sec(title, open, kids) { return h('details', { class: 'panel howto' }, h('summary', null, title), kids); }
+    var P = function (t) { return h('p', null, t); }, UL = function (a) { return h('ul', null, a.filter(Boolean).map(function (t) { return h('li', null, t); })); };
+    var target = pct(CFG.passMark);
+    show(topbar('How to use this app', back),
+      h('p', { class: 'lead' }, (first ? 'Welcome. ' : '') + 'This app helps you learn the course and then prove it under exam conditions. Tap a heading to open it.'),
+      CFG.text && CFG.text.realExam ? h('div', { class: 'panel hero' }, h('h2', { class: 'in' }, 'The real exam'), P(CFG.text.realExam),
+        hasTarget() ? P('Aim for ' + target + ' in your practice exams before you sit the real one. A margin makes up for nerves and questions you have not seen.') : null) : null,
+      sec('How the app works', false, [
+        P('Every flash card, missing word and question is tracked on this device. Each time you answer, the app moves that item up when you are right and down when you are wrong.'),
+        P('Mastery is how far up your items are. A unit reaches 100% when you have answered its items correctly several times, not just once. Practice is steered towards the items you find hardest and the ones you have not seen yet.'),
+        P('Nothing leaves this device. Use Save and import in About to move your progress to another phone or laptop.')]),
+      sec('The home screen', false, UL([
+        'Modules: one card each, with your mastery so far.',
+        RV ? RV.title + ': the ' + ND + '-day exam countdown, for the final week before the exam.' : null,
+        'About: your details, the read-aloud voice, Save and import, and this guide.'])),
+      sec('Inside a module: Study and Exams tabs', false, [
+        P('The top of a module shows your mastery and how close every unit is to the ' + target + ' target. Below it are two tabs.'),
+        UL(['Study: all the practice activities and your progress by unit.',
+          'Exams: the final exam for the module, your progress chart and the league table of every attempt.']),
+        P('The unit chips (All units, ' + (LBL.intro || 'Intro') + ', ' + (LBL.unit || 'Unit') + ' 1 ...) narrow every activity to one unit. Choose a unit when the progress bars or an exam show it is weak.')]),
+      sec('Study activities', false, UL([
+        'Train me: the best place to start every session. ' + 12 + ' items mixed from flash cards, missing words and questions, weighted towards your weak spots.',
+        anyRead ? 'Read the unit (or Read the module): revision notes for the unit in plain words. Tap Listen to have them read aloud. Your place is saved, and reading does not change your mastery.' : null,
+        'Flash cards: read the question, recall the answer in your head, then turn the card and rate yourself honestly.',
+        'Match up: pair terms with their meanings. Good for definitions and look-alike terms.',
+        'Missing word: complete the sentence by typing or choosing. Typing is harder and fixes the term in your memory.',
+        'Label the diagram: tap a label, then the number it belongs to.',
+        CFG.why ? 'After every checked answer, a Why line explains the answer and where it comes from in the course pack.' : null,
+        SAY.ok ? 'The speaker at the top of a question reads it aloud.' : null])),
+      sec('Module final exams', false, [
+        P(CFG.examLength + ' questions from across the module, in exam conditions: no feedback until you finish, and you can flag questions and go back. ' + passLine(CFG.examLength, true) + '.'),
+        P('Each question is worth one mark. A question with several correct answers only scores if you choose every right answer and nothing else.'),
+        UL(['When: once every unit is near ' + target + ' on the Study tab. Sitting it too early mostly tells you what you have not learnt yet.',
+          'After it: read the Review of every wrong answer, then use Train me on the weakest units.',
+          'The Exams tab keeps every attempt. The chart shows your score against the pass mark' + (hasTarget() ? ' and the ' + target + ' target' : '') + '. The league table ranks your attempts, with the date and time taken. Tap an attempt to see which units cost you marks, and tap Train this unit to practise it.',
+          'Aim for several attempts in a row at or above ' + target + ', not one lucky score.'])]),
+      RV ? sec(RV.title + ': the ' + ND + '-day countdown', false, [
+        P('For the last ' + numWord(ND) + ' days before the exam. Day 1 opens when you start. Each day after that opens at midnight, and days you have reached stay open.'),
+        UL(['Each day is a ' + RV.paperLength + '-question paper on that day\'s topics, in ' + (TXT.formatsRevision || 'the exam formats') + ', with no feedback until the end.',
+          MOCKDAY ? 'Day ' + MOCKDAY.n + ' adds the full mock exam: ' + RV.mockLength + ' questions from every module, like the real thing. Sit it in one go, somewhere quiet. The app records how long you take.' : null,
+          'The Results tab has the chart and league table for every paper. Filter by day or the mock, and tap a paper to see its weak units.',
+          'Exam soon? If your exam is less than ' + ND + ' days away, tick the box at the bottom of the Countdown tab (or in About) to open every day' + (MOCKDAY ? ' and the mock' : '') + ' at once.']),
+        P('Between papers, go back to the modules and use Train me on the units your results show are weak.')]) : null,
+      sec('A plan that works', false, UL([
+        'Weeks before: work through each module unit by unit' + (anyRead ? ': read the unit, then' : ':') + ' Train me until the unit reaches ' + target + '.',
+        'When a module is at ' + target + ' everywhere, sit its final exam. Fix the weak units it shows, then sit it again.',
+        RV ? 'Final week: start the ' + ND + '-day countdown, one paper a day, with Train me on whatever each paper shows up.' : null,
+        RV && MOCKDAY ? 'Day ' + MOCKDAY.n + ': the full mock. You are ready for the real exam when your mocks are at ' + target + ' or above.' : null,
+        'Short and often beats long and rare: a little every day keeps more in your memory than one long session a week.'])),
+      sec('Settings and your data', false, UL([
+        SAY.ok ? 'Read-aloud voice: choose it in About. On iPhone read aloud is silent when the phone is on Silent.' : null,
+        'Save and import: in About. Save a file before changing phones, then import it on the new one.',
+        'Change my details: update your name, company or exam date in About.'])),
+      btn(first ? 'Got it, take me to the course' : 'Done', 'primary', back),
+      first ? h('p', { class: 'copy' }, 'You can open this guide again from About.') : null);
   }
 
   /* ---------- session runner ---------- */
@@ -887,6 +1098,7 @@
     return shuffle(out);
   }
   function exam(m) {
+    var t0 = Date.now();
     var paper = examPaper(m).map(function (t) {
       return { m: m, u: t.u, id: t.id, fmt: t.order ? 'seq' : t.a.length > 1 ? 'mr' : 'mc', q: t.q, o: t.o, a: t.a, order: t.order, x: t.x, src: t.src, why: t.why };
     });
@@ -899,12 +1111,11 @@
     function result(res) {
       var score = 0, byU = {};
       res.forEach(function (r) { mark(r.c.id, r.ok); if (r.ok) score++; var b = byU[r.c.u] = byU[r.c.u] || { s: 0, n: 0 }; b.n++; if (r.ok) b.s++; });
-      (S.exams[m.id] = S.exams[m.id] || []).push({ d: Date.now(), s: score, n: paper.length }); save();
-      var need = Math.ceil(CFG.passMark * paper.length), pass = score >= need;
+      var ub = {}; Object.keys(byU).forEach(function (u) { ub[u] = [byU[u].s, byU[u].n]; });
+      (S.exams[m.id] = S.exams[m.id] || []).push({ d: Date.now(), s: score, n: paper.length, t: Math.round((Date.now() - t0) / 1000), u: ub }); save();
       var wrong = res.filter(function (r) { return !r.ok; });
       show(topbar('Exam result', function () { modScreen(m); }),
-        h('div', { class: 'panel hero res' }, h('div', { class: 'big' }, score + ' / ' + paper.length), h('div', null, pct(score / paper.length) + ' · pass mark ' + need + ' (' + pct(CFG.passMark) + ')'),
-          h('div', { class: 'ready ' + (pass ? 'yes' : '') }, pass ? 'Pass.' : 'Not yet. Use Train me on the weaker units below.')),
+        resultHero(score, paper.length, 'Use Train me on the weaker units below.'),
         h('h2', null, 'By unit'),
         Object.keys(byU).map(function (u) { var b = byU[u], f = b.s / b.n; return h('div', { class: 'urow' }, h('div', { class: 'uname' }, m.units[u], h('b', null, b.s + ' / ' + b.n)), bar(f, f >= CFG.passMark ? 'good' : f < 0.5 ? 'weak' : '')); }),
         wrong.length ? h('h2', null, 'Review (' + wrong.length + ')') : null,
@@ -926,7 +1137,7 @@
           }
           return h('div', { class: 'panel rev' }, h('p', { class: 'q' }, t.q), detail, whyLine(m, t), t.x ? h('p', { class: 'note' }, t.x) : null, h('small', null, m.units[t.u]));
         }),
-        btn('Back to module', 'primary', function () { modScreen(m); }));
+        btn('Back to module', 'primary', function () { modScreen(m); }), btn('See all exam results', '', function () { modTab = 'exams'; modScreen(m); }));
     }
   }
 
@@ -1267,23 +1478,49 @@
     var mock = h('button', { class: 'modcard day mock' + (mockOpen ? '' : ' off'), type: 'button', disabled: !mockOpen, onclick: function () { rvStart(d7, true); } },
       h('strong', null, 'Day 7: Full mock exam'), h('span', null, 'Every module, every format'), mk ? bar(mk.best, mk.best >= CFG.passMark ? 'good' : '') : null,
       h('small', null, (mockOpen ? (mk ? 'Best ' + pct(mk.best) : 'Ready') : 'Unlocks on Day 7') + ' · ' + RV.mockLength + ' questions'));
+    show(topbar('Revision', home),
+      h('div', { class: 'panel hero' },
+        h('div', { class: 'big' }, r.unlocked ? 'All open' : r.start ? (now > 7 ? 'Done' : 'Day ' + now) : '7 days'),
+        h('div', null, r.unlocked ? 'Countdown released: every day and the full mock are open. Turn this off at the bottom of the Countdown tab or in About.' : r.start ? (now > 7 ? 'All seven days are open. Keep sitting papers.' : 'of 7 · started ' + r.start.split('-').reverse().join('/')) : 'One exam-style paper a day, in the IFE online formats.'),
+        h('div', { class: 'ready' }, 'Exam conditions: no feedback until you finish. Modules One to Three stay open for practice at any time.')),
+      tabs([['days', 'Countdown'], ['results', 'Results' + ((r.hist || []).length ? ' (' + r.hist.length + ')' : '')]], rvTab, function (k) { rvTab = k; rvHome(); }),
+      rvTab === 'results' ? rvResults() : [
+      rows, mock,
+      h('div', { class: 'panel' }, h('p', null, 'Each day unlocks at midnight after you start Day 1. Days you have reached stay open, so you can sit their papers again.'),
+        r.start ? btn('Restart the countdown', '', function () { if (window.confirm('Restart the 7 days from today? Scores are kept.')) { r.start = today(); save(); rvHome(); } }) : null),
+      unlockPanel(rvHome)]);
+  }
+  // Results tab (v0.16.0): chart and league table of every countdown paper and mock, filterable by day
+  var rvFilter = 'all';
+  function rvResults() {
+    var r = rvState(), hist = r.hist || [];
+    var keys = ['all'].concat(RV.days.filter(function (d) { return hist.some(function (x) { return x.k === d.n; }); }).map(function (d) { return d.n; }))
+      .concat(hist.some(function (x) { return x.k === 'mock'; }) ? ['mock'] : []);
+    if (keys.indexOf(rvFilter) < 0) rvFilter = 'all';
+    var recs = hist.filter(function (x) { return rvFilter === 'all' || x.k === rvFilter; });
     var fs = RV.formats.map(function (f) {
       var x = r.fmt[f[0]];
       return h('div', { class: 'urow' }, h('div', { class: 'uname' }, f[1], h('b', null, x ? x.s + ' / ' + x.n : '–')), bar(x ? x.s / x.n : 0, x ? (x.s / x.n >= CFG.passMark ? 'good' : x.s / x.n < 0.5 ? 'weak' : '') : ''));
     });
-    show(topbar('Revision', home),
-      h('div', { class: 'panel hero' },
-        h('div', { class: 'big' }, r.unlocked ? 'All open' : r.start ? (now > 7 ? 'Done' : 'Day ' + now) : '7 days'),
-        h('div', null, r.unlocked ? 'Countdown released: every day and the full mock are open. Turn this off in About.' : r.start ? (now > 7 ? 'All seven days are open. Keep sitting papers.' : 'of 7 · started ' + r.start.split('-').reverse().join('/')) : 'One exam-style paper a day, in the IFE online formats.'),
-        h('div', { class: 'ready' }, 'Exam conditions: no feedback until you finish. Modules One to Three stay open for practice at any time.')),
-      h('h2', null, 'Your countdown'), rows, mock,
-      h('h2', null, 'Score by exam format'), fs,
-      h('div', { class: 'panel' }, h('p', null, 'Each day unlocks at midnight after you start Day 1. Days you have reached stay open, so you can sit their papers again.'),
-        r.start ? btn('Restart the countdown', '', function () { if (window.confirm('Restart the 7 days from today? Scores are kept.')) { r.start = today(); save(); rvHome(); } }) : null));
+    var old = RV.days.concat([{ n: 'mock' }]).filter(function (d) { return r.days[d.n] && !hist.some(function (x) { return x.k === d.n; }); });
+    return [keys.length > 2 ? h('div', { class: 'chips' }, keys.map(function (k) {
+        return h('button', { class: 'chip' + (rvFilter === k ? ' on' : ''), type: 'button', onclick: function () { rvFilter = k; rvHome(); } }, k === 'all' ? 'All papers' : k === 'mock' ? 'Mock' : 'Day ' + k);
+      })) : null,
+      examsView({ recs: recs, label: function (x) { return x.k === 'mock' ? 'Mock' : 'Day ' + x.k; }, mockKey: true,
+        empty: 'No papers yet. Each paper you finish appears here with its date, time taken, score and weak units.',
+        units: function (rec) {
+          return rec.u ? Object.keys(rec.u).map(function (k) {
+            var p = k.split('.'), m = MODS.filter(function (x) { return x.id === p[0]; })[0];
+            return { name: m && m.units[p[1]] ? m.title + ' · ' + m.units[p[1]] : 'Revision extras', s: rec.u[k][0], n: rec.u[k][1],
+              go: m && m.units[p[1]] ? function () { unitFilter = +p[1]; modTab = 'study'; train(m); } : null };
+          }) : null;
+        } }),
+      old.length ? h('p', { class: 'hint' }, 'Papers sat before this version kept only your best score: ' + old.map(function (d) { return (d.n === 'mock' ? 'Mock' : 'Day ' + d.n) + ' ' + pct(r.days[d.n].best); }).join(', ') + '.') : null,
+      h('h2', null, 'Score by exam format'), fs];
   }
 
   function rvStart(day, mock) {
-    var r = rvState();
+    var r = rvState(), t0 = Date.now();
     if (!r.start) { r.start = today(); save(); }
     paperRun({
       title: mock ? 'Full mock exam' : 'Day ' + day.n, paper: rvPaper(day, mock),
@@ -1293,10 +1530,10 @@
           h('div', { class: 'utag' }, c.m ? c.m.title + ' · ' + c.m.units[c.u] : 'Day ' + c.day + ': ' + RV.days[c.day - 1].title),
           SRCTAG[c.src] ? h('div', { class: 'utag' }, SRCTAG[c.src]) : null]);
       },
-      finish: function (res) { rvResult(day, mock, res); }
+      finish: function (res) { rvResult(day, mock, res, t0); }
     });
   }
-  function rvResult(day, mock, res) {
+  function rvResult(day, mock, res, t0) {
     var r = rvState(), score = 0, byF = {};
     res.forEach(function (x) {
       x.marks.forEach(function (mk) { mark(mk[0], mk[1]); });
@@ -1306,12 +1543,16 @@
     });
     var frac = score / res.length, key = mock ? 'mock' : day.n, rec = r.days[key] = r.days[key] || { best: 0, tries: 0 };
     rec.tries++; rec.best = Math.max(rec.best, frac); rec.last = frac; save();
-    var need = Math.ceil(CFG.passMark * res.length), pass = score >= need;
+    var need = needFor(res.length), pass = score >= need;
+    // v0.16.0: every attempt is kept for the Results tab (league table and chart)
+    var ub = {}; res.forEach(function (x) { var k = rvUnitKey(x.c), b = ub[k] = ub[k] || [0, 0]; b[1]++; if (x.ok) b[0]++; });
+    var fb = {}; Object.keys(byF).forEach(function (k) { fb[k] = [byF[k].s, byF[k].n]; });
+    (r.hist = r.hist || []).push({ d: Date.now(), k: key, s: score, n: res.length, t: Math.round((Date.now() - (t0 || Date.now())) / 1000), u: ub, f: fb }); save();
     var weakest = RV.formats.filter(function (f) { return byF[f[0]]; }).sort(function (a, b) { return byF[a[0]].s / byF[a[0]].n - byF[b[0]].s / byF[b[0]].n; })[0];
     var wrong = res.filter(function (x) { return !x.ok; });
     show(topbar(mock ? 'Mock result' : 'Day ' + day.n + ' result', rvHome),
-      h('div', { class: 'panel hero res' }, h('div', { class: 'big' }, score + ' / ' + res.length), h('div', null, pct(frac) + ' · pass mark ' + need + ' (' + pct(CFG.passMark) + ')'),
-        h('div', { class: 'ready ' + (pass ? 'yes' : '') }, pass ? 'Pass.' : 'Not yet.' + (weakest && byF[weakest[0]].s < byF[weakest[0]].n ? ' Weakest format: ' + weakest[1] + '.' : ''))),
+      h('div', { class: 'panel hero res' }, h('div', { class: 'big' }, score + ' / ' + res.length), h('div', null, pct(frac) + ' · ' + passLine(res.length)),
+        h('div', { class: 'ready ' + (pass ? 'yes' : '') }, gradeText(score, res.length, weakest && byF[weakest[0]].s < byF[weakest[0]].n ? 'Weakest format: ' + weakest[1] + '.' : ''))),
       h('h2', null, 'By exam format'),
       RV.formats.filter(function (f) { return byF[f[0]]; }).map(function (f) {
         var b = byF[f[0]], x = b.s / b.n;
@@ -1327,7 +1568,8 @@
           c.x ? h('p', { class: 'note' }, c.x) : null,
           h('small', null, c.m ? c.m.title + ' · ' + c.m.units[c.u] : 'Revision · Day ' + c.day));
       }),
-      btn(mock ? 'Sit another mock' : 'Sit this day again', 'primary', function () { rvStart(day, mock); }), btn('Back to countdown', '', rvHome));
+      btn(mock ? 'Sit another mock' : 'Sit this day again', 'primary', function () { rvStart(day, mock); }),
+      btn('See all results', '', function () { rvTab = 'results'; rvHome(); }), btn('Back to countdown', '', function () { rvTab = 'days'; rvHome(); }));
   }
 
   /* ---------- start ---------- */
