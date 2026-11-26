@@ -2,7 +2,7 @@
    To switch it on later: set enabled to true and endpoint to the proxy URL.
    Never put an AI provider key in this file: anyone can read it. */
 window.IFE_CONFIG = {
-  version: '0.16.0',
+  version: '0.16.1',
   passMark: 0.85,     // target: score to reach in practice before the real exam
   examLength: 65,     // module final exams: 65 questions, like the real IFE exam
   examPass: 45,       // exam pass mark: 45 of 65 (v0.16.0)
