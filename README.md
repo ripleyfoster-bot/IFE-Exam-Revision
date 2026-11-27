@@ -58,3 +58,10 @@ Kept in step with the learning engine 1.7.0 (ripleyfoster-bot/xrf-learning-engin
 - Revision: Countdown and Results tabs. Exam soon? is also at the bottom of the Countdown tab.
 - How to use: shown once on first opening (and once to existing users after this update), then from About.
 
+## v0.17.0 (27 Nov 2026)
+
+Kept in step with the learning engine 1.8.0:
+- Module exam back under Progress by unit: 40 questions. The Day 7 mock stays at 65.
+- Pass mark taken from the real exam (45 of 65, 69%) for every paper; target 85%.
+- Exam attempts keep the questions asked, ready for the international exam tick (UK and European standards not counted). The tick appears once content/filter.js is added and listed in index.html and sw.js.
+
